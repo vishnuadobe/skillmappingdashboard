@@ -141,6 +141,8 @@ const LEVEL_NAMES = ['Not assessed', 'Foundational', 'Developing', 'Professional
 
 const CATEGORIES = ['Generic Skill', 'Niche Skill', 'Super Niche', 'Ultra Niche'];
 
+const FILTER_OPTIONS = ['All', ...CATEGORIES];
+
 function getInitials(name) {
   const parts = name.split(/\s+/).filter(Boolean);
   const first = parts[0]?.[0] || '';
@@ -235,6 +237,36 @@ function createHeader(employee, canEdit) {
   }
 
   return header;
+}
+
+function createFilter(state, refresh) {
+  const controls = document.createElement('div');
+  controls.className = 'skill-profile__controls';
+
+  const filterLabel = document.createElement('label');
+  filterLabel.className = 'skill-profile__filter-label';
+  filterLabel.setAttribute('for', 'skill-profile-category-filter');
+  filterLabel.textContent = 'Filter by category';
+
+  const filterSelect = document.createElement('select');
+  filterSelect.id = 'skill-profile-category-filter';
+  filterSelect.className = 'skill-profile__filter-select';
+
+  FILTER_OPTIONS.forEach((option) => {
+    const optionElement = document.createElement('option');
+    optionElement.value = option;
+    optionElement.textContent = option;
+    optionElement.selected = option === state.activeFilter;
+    filterSelect.append(optionElement);
+  });
+
+  filterSelect.addEventListener('change', (event) => {
+    state.activeFilter = event.target.value;
+    refresh();
+  });
+
+  controls.append(filterLabel, filterSelect);
+  return controls;
 }
 
 function createDots(actual, expected) {
@@ -372,6 +404,7 @@ function createActionBar(state, refresh) {
 function renderProfile(block, employee, canEdit) {
   const state = {
     isEditing: false,
+    activeFilter: 'All',
     saved: buildSkillMap(employee.skills),
     draft: buildSkillMap(employee.skills),
   };
@@ -408,7 +441,13 @@ function renderProfile(block, employee, canEdit) {
 
     wrapper.append(header);
 
+    wrapper.append(createFilter(state, refresh));
+
     CATEGORIES.forEach((category) => {
+      if (state.activeFilter !== 'All' && state.activeFilter !== category) {
+        return;
+      }
+
       const categorySkills = skills.filter((skill) => skill.category === category);
       wrapper.append(createSkillSection(category, categorySkills, state, refresh));
     });

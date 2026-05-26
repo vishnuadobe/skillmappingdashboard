@@ -91,6 +91,33 @@
   justify-content: flex-start;
 }
 
+.skill-profile .skill-profile__controls {
+  display: grid;
+  gap: 8px;
+}
+
+.skill-profile .skill-profile__filter-label {
+  color: var(--skill-profile-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.skill-profile .skill-profile__filter-select {
+  min-height: 44px;
+  width: min(100%, 280px);
+  padding: 0 14px;
+  border: 1px solid var(--skill-profile-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--skill-profile-text);
+  font: inherit;
+}
+
+.skill-profile .skill-profile__filter-select:focus-visible {
+  outline: none;
+  box-shadow: var(--skill-profile-focus);
+}
+
 .skill-profile .skill-profile__button {
   display: inline-flex;
   align-items: center;
