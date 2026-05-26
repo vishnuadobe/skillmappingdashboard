@@ -232,11 +232,6 @@ export default function decorate(block) {
   heading.textContent = headingText;
   header.append(heading);
 
-  const meta = document.createElement('p');
-  meta.className = 'org-chart__meta';
-  meta.textContent = `Mock manager view for ${userId}`;
-  header.append(meta);
-
   wrapper.append(header);
 
   if (view !== 'manager') {

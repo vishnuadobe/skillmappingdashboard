@@ -30,12 +30,6 @@
   line-height: 1.2;
 }
 
-.org-chart .org-chart__meta {
-  margin: 8px 0 0;
-  color: var(--org-chart-text-muted);
-  font-size: 0.95rem;
-}
-
 .org-chart .org-chart__tree {
   display: flex;
   flex-direction: column;
