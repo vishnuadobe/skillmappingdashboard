@@ -8,6 +8,8 @@ helix-importer-ui
 *.bak
 .idea
 
+org-chart-authoring.md
+
 # Ensure these files are tracked
 !CLAUDE.md
 !AGENTS.md
