@@ -52,7 +52,7 @@ function buildAutoBlocks(main) {
     // auto load `*/fragments/*` references
     const fragments = [...main.querySelectorAll('a[href*="/fragments/"]')].filter((f) => !f.closest('.fragment'));
     if (fragments.length > 0) {
-      // eslint-disable-next-line import/no-cycle
+      // eslint-disable-next-line import/no-cycle, import/no-unresolved
       import('../blocks/fragment/fragment.js').then(({ loadFragment }) => {
         fragments.forEach(async (fragment) => {
           try {

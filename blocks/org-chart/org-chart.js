@@ -147,12 +147,13 @@ function createPersonCard(person, options = {}) {
   const {
     isManager = false,
     reportCount = 0,
-    profilePath = '/skill-profile',
+    profilePath = '/empProfile',
+    managerId = '',
   } = options;
 
   const card = document.createElement('a');
   card.className = 'org-chart__card';
-  card.href = `${profilePath}?employeeId=${encodeURIComponent(person.id)}`;
+  card.href = `${profilePath}?manager=${encodeURIComponent(managerId)}&emp=${encodeURIComponent(person.id)}`;
   card.setAttribute('aria-label', `Open ${person.name}'s skill profile`);
   if (isManager) {
     card.classList.add('org-chart__card--manager');
@@ -215,7 +216,7 @@ export default function decorate(block) {
   const headingText = config.heading || 'Skill Navigator';
   const view = (config.view || 'manager').toLowerCase();
   const userId = config['user-id'] || ORG_DATA.manager.managerId;
-  const profilePath = config['profile-path'] || '/skill-profile';
+  const profilePath = config['profile-path'] || '/empProfile';
 
   const { manager, employees } = normalizeData(ORG_DATA);
 
@@ -260,6 +261,7 @@ export default function decorate(block) {
     isManager: true,
     reportCount: employees.length,
     profilePath,
+    managerId: manager.id,
   }));
   chart.append(root);
 
@@ -272,7 +274,10 @@ export default function decorate(block) {
   employees.forEach((employee) => {
     const item = document.createElement('li');
     item.className = 'org-chart__report';
-    item.append(createPersonCard(employee, { profilePath }));
+    item.append(createPersonCard(employee, {
+      profilePath,
+      managerId: manager.id,
+    }));
     list.append(item);
   });
 
