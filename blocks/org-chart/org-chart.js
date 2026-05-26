@@ -212,7 +212,7 @@ function normalizeData(data) {
 
 export default function decorate(block) {
   const config = readBlockConfig(block);
-  const headingText = config.heading || 'Skill Navigator';
+  const headingText = config.heading || 'Organization Chart';
   const view = (config.view || 'manager').toLowerCase();
   const userId = config['user-id'] || ORG_DATA.manager.managerId;
   const profilePath = config['profile-path'] || '/skill-profile';
