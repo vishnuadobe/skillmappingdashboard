@@ -147,7 +147,7 @@ function createPersonCard(person, options = {}) {
   const {
     isManager = false,
     reportCount = 0,
-    profilePath = '/empProfile',
+    profilePath = '/empprofile',
     managerId = '',
   } = options;
 
@@ -216,7 +216,7 @@ export default function decorate(block) {
   const headingText = config.heading || 'Skill Navigator';
   const view = (config.view || 'manager').toLowerCase();
   const userId = config['user-id'] || ORG_DATA.manager.managerId;
-  const profilePath = config['profile-path'] || '/empProfile';
+  const profilePath = config['profile-path'] || '/empprofile';
 
   const { manager, employees } = normalizeData(ORG_DATA);
 
