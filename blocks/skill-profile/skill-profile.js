@@ -17,131 +17,383 @@ function readBlockConfig(block) {
 }
 
 // TODO: replace hardcoded data with GET /api/v1/managers/{managerId}/employees/skills
-const EMPLOYEES = [
-  {
-    id: 'atul-bansal',
-    name: 'Atul Bansal',
+const SKILL_PROFILE_DATA = {
+  metadata: {
+    version: '1.0',
+    lastUpdatedAt: '2026-05-25T00:00:00Z',
+    categories: [
+      { categoryId: 1, categoryName: 'Generic Skill' },
+      { categoryId: 2, categoryName: 'Niche Skill' },
+      { categoryId: 3, categoryName: 'Super Niche' },
+      { categoryId: 4, categoryName: 'Ultra Niche' },
+    ],
+    skills: [
+      { skillId: 1, skillName: 'HTML5', categoryId: 1 },
+      { skillId: 2, skillName: 'CSS3', categoryId: 1 },
+      { skillId: 3, skillName: 'JavaScript (ES6+)', categoryId: 1 },
+      { skillId: 4, skillName: 'TypeScript', categoryId: 2 },
+      { skillId: 5, skillName: 'ReactJS/AngularJS /VueJS', categoryId: 2 },
+      { skillId: 6, skillName: 'ReactNative/FlutterJS', categoryId: 3 },
+      { skillId: 7, skillName: 'IOS/Android Development', categoryId: 4 },
+      { skillId: 8, skillName: 'SvelteJS', categoryId: 4 },
+      { skillId: 9, skillName: 'Next.js', categoryId: 3 },
+      { skillId: 10, skillName: 'API Integration/GraphQL', categoryId: 2 },
+      { skillId: 11, skillName: 'Node.js (Frontend Integration Level)', categoryId: 4 },
+      { skillId: 12, skillName: 'Webpack / Vite / Build Tools', categoryId: 2 },
+      { skillId: 13, skillName: 'Unit Testing (Jest, Vitest, Jasmine)', categoryId: 2 },
+      { skillId: 14, skillName: 'Progressive Web Apps (PWA)', categoryId: 4 },
+      { skillId: 15, skillName: 'Adobe EDS (Edge Delivery Services)', categoryId: 2 },
+      { skillId: 16, skillName: 'ElectronJS', categoryId: 4 },
+      { skillId: 17, skillName: 'Magento', categoryId: 3 },
+      { skillId: 18, skillName: 'AdobeIO', categoryId: 2 },
+    ],
+    proficiencyLevels: [
+      { proficiencyLevel: 1, proficiencyLevelName: 'Foundational' },
+      { proficiencyLevel: 2, proficiencyLevelName: 'Developing' },
+      { proficiencyLevel: 3, proficiencyLevelName: 'Professional' },
+      { proficiencyLevel: 4, proficiencyLevelName: 'Expert' },
+      { proficiencyLevel: 5, proficiencyLevelName: 'Master' },
+    ],
+  },
+  manager: {
+    managerId: 'atul-bansal',
+    managerName: 'Atul Bansal',
+    managerEmail: 'atulb@adobe.com',
+    profileImageUrl: null,
     designation: 'Engineering Manager',
-    department: 'ACS',
-    email: 'atulb@adobe.com',
-    skills: [
-      { skillId: 1, proficiencyLevel: 4 },
-      { skillId: 2, proficiencyLevel: 4 },
-      { skillId: 3, proficiencyLevel: 4 },
-      { skillId: 4, proficiencyLevel: 3 },
-      { skillId: 5, proficiencyLevel: 3 },
-      { skillId: 10, proficiencyLevel: 4 },
-      { skillId: 15, proficiencyLevel: 5 },
-      { skillId: 18, proficiencyLevel: 3 },
-    ],
   },
-  {
-    id: 'abaskaran',
-    name: 'Aravind Baskaran',
-    designation: 'Sr Technical Consultant',
-    department: 'ACS',
-    email: 'abaskaran@adobe.com',
-    skills: [
-      { skillId: 1, proficiencyLevel: 3 },
-      { skillId: 2, proficiencyLevel: 3 },
-      { skillId: 3, proficiencyLevel: 3 },
-      { skillId: 4, proficiencyLevel: 2 },
-      { skillId: 5, proficiencyLevel: 3 },
-      { skillId: 10, proficiencyLevel: 2 },
-      { skillId: 15, proficiencyLevel: 3 },
-      { skillId: 18, proficiencyLevel: 2 },
-    ],
-  },
-  {
-    id: 'priya',
-    name: 'Priya Sharma',
-    designation: 'Technical Consultant',
-    department: 'ACS',
-    email: 'priya@adobe.com',
-    skills: [
-      { skillId: 1, proficiencyLevel: 4 },
-      { skillId: 2, proficiencyLevel: 3 },
-      { skillId: 3, proficiencyLevel: 4 },
-      { skillId: 4, proficiencyLevel: 3 },
-      { skillId: 5, proficiencyLevel: 4 },
-      { skillId: 9, proficiencyLevel: 2 },
-      { skillId: 10, proficiencyLevel: 3 },
-      { skillId: 15, proficiencyLevel: 2 },
-    ],
-  },
-  {
-    id: 'robin',
-    name: 'Robin Varsh',
-    designation: 'Assoc Technical Consultant',
-    department: 'EDS',
-    email: 'robin@adobe.com',
-    skills: [
-      { skillId: 1, proficiencyLevel: 2 },
-      { skillId: 2, proficiencyLevel: 2 },
-      { skillId: 3, proficiencyLevel: 3 },
-      { skillId: 5, proficiencyLevel: 2 },
-      { skillId: 15, proficiencyLevel: 2 },
-    ],
-  },
-  {
-    id: 'meena',
-    name: 'Meena Pillai',
-    designation: 'Sr Technical Consultant',
-    department: 'ACS',
-    email: 'meena@adobe.com',
-    skills: [
-      { skillId: 1, proficiencyLevel: 4 },
-      { skillId: 2, proficiencyLevel: 4 },
-      { skillId: 3, proficiencyLevel: 4 },
-      { skillId: 4, proficiencyLevel: 4 },
-      { skillId: 5, proficiencyLevel: 4 },
-      { skillId: 6, proficiencyLevel: 3 },
-      { skillId: 9, proficiencyLevel: 3 },
-      { skillId: 10, proficiencyLevel: 3 },
-      { skillId: 12, proficiencyLevel: 3 },
-      { skillId: 15, proficiencyLevel: 4 },
-    ],
-  },
-];
-
-const SKILLS_CATALOGUE = [
-  { skillId: 1, name: 'HTML5', category: 'Generic Skill' },
-  { skillId: 2, name: 'CSS3', category: 'Generic Skill' },
-  { skillId: 3, name: 'JavaScript (ES6+)', category: 'Generic Skill' },
-  { skillId: 4, name: 'TypeScript', category: 'Niche Skill' },
-  { skillId: 5, name: 'ReactJS / AngularJS / VueJS', category: 'Niche Skill' },
-  { skillId: 6, name: 'ReactNative / FlutterJS', category: 'Super Niche' },
-  { skillId: 7, name: 'iOS / Android Development', category: 'Ultra Niche' },
-  { skillId: 8, name: 'SvelteJS', category: 'Ultra Niche' },
-  { skillId: 9, name: 'Next.js', category: 'Super Niche' },
-  { skillId: 10, name: 'API Integration / GraphQL', category: 'Niche Skill' },
-  { skillId: 11, name: 'Node.js', category: 'Ultra Niche' },
-  { skillId: 12, name: 'Webpack / Vite / Build Tools', category: 'Niche Skill' },
-  { skillId: 13, name: 'Unit Testing (Jest, Vitest)', category: 'Niche Skill' },
-  { skillId: 14, name: 'Progressive Web Apps (PWA)', category: 'Ultra Niche' },
-  { skillId: 15, name: 'Adobe EDS', category: 'Niche Skill' },
-  { skillId: 16, name: 'ElectronJS', category: 'Ultra Niche' },
-  { skillId: 17, name: 'Magento', category: 'Super Niche' },
-  { skillId: 18, name: 'AdobeIO', category: 'Niche Skill' },
-];
-
-const EXPECTED_LEVELS = {
-  1: 4,
-  2: 4,
-  3: 4,
-  4: 3,
-  5: 3,
-  9: 2,
-  10: 3,
-  15: 3,
-  18: 2,
+  employees: [
+    {
+      employeeId: 'abaskaran',
+      employeeName: 'Aravind Baskaran',
+      emailAddress: 'abaskaran@adobe.com',
+      profileImageUrl: null,
+      designation: 'Sr Technical Consultant',
+      skillSet: [
+        { skillId: 1, proficiencyLevel: 5 },
+        { skillId: 2, proficiencyLevel: 5 },
+        { skillId: 3, proficiencyLevel: 5 },
+        { skillId: 4, proficiencyLevel: 5 },
+        { skillId: 5, proficiencyLevel: 5 },
+        { skillId: 6, proficiencyLevel: 3 },
+        { skillId: 7, proficiencyLevel: 1 },
+        { skillId: 8, proficiencyLevel: 1 },
+        { skillId: 9, proficiencyLevel: 3 },
+        { skillId: 10, proficiencyLevel: 4 },
+        { skillId: 11, proficiencyLevel: 3 },
+        { skillId: 12, proficiencyLevel: 3 },
+        { skillId: 13, proficiencyLevel: 5 },
+        { skillId: 14, proficiencyLevel: 1 },
+        { skillId: 15, proficiencyLevel: 2 },
+        { skillId: 16, proficiencyLevel: 1 },
+        { skillId: 17, proficiencyLevel: 1 },
+        { skillId: 18, proficiencyLevel: 1 },
+      ],
+    },
+    {
+      employeeId: 'robinvarshn',
+      employeeName: 'Robin Varshney',
+      emailAddress: 'robinvarshn@adobe.com',
+      profileImageUrl: null,
+      designation: 'Sr Technical Consultant',
+      skillSet: [
+        { skillId: 1, proficiencyLevel: 5 },
+        { skillId: 2, proficiencyLevel: 5 },
+        { skillId: 3, proficiencyLevel: 5 },
+        { skillId: 4, proficiencyLevel: 5 },
+        { skillId: 5, proficiencyLevel: 5 },
+        { skillId: 6, proficiencyLevel: 3 },
+        { skillId: 7, proficiencyLevel: 3 },
+        { skillId: 8, proficiencyLevel: 3 },
+        { skillId: 9, proficiencyLevel: 5 },
+        { skillId: 10, proficiencyLevel: 5 },
+        { skillId: 11, proficiencyLevel: 5 },
+        { skillId: 12, proficiencyLevel: 5 },
+        { skillId: 13, proficiencyLevel: 5 },
+        { skillId: 14, proficiencyLevel: 5 },
+        { skillId: 15, proficiencyLevel: 3 },
+        { skillId: 16, proficiencyLevel: 3 },
+        { skillId: 17, proficiencyLevel: 1 },
+        { skillId: 18, proficiencyLevel: 4 },
+      ],
+    },
+    {
+      employeeId: 'shivamsharma',
+      employeeName: 'Shivam Sharma',
+      emailAddress: 'shivamsharma@adobe.com',
+      profileImageUrl: null,
+      designation: 'Technical Consultant',
+      skillSet: [
+        { skillId: 1, proficiencyLevel: 5 },
+        { skillId: 2, proficiencyLevel: 5 },
+        { skillId: 3, proficiencyLevel: 5 },
+        { skillId: 4, proficiencyLevel: 5 },
+        { skillId: 5, proficiencyLevel: 5 },
+        { skillId: 6, proficiencyLevel: 1 },
+        { skillId: 7, proficiencyLevel: 1 },
+        { skillId: 8, proficiencyLevel: 3 },
+        { skillId: 9, proficiencyLevel: 3 },
+        { skillId: 10, proficiencyLevel: 5 },
+        { skillId: 11, proficiencyLevel: 5 },
+        { skillId: 12, proficiencyLevel: 4 },
+        { skillId: 13, proficiencyLevel: 5 },
+        { skillId: 14, proficiencyLevel: 5 },
+        { skillId: 15, proficiencyLevel: 1 },
+        { skillId: 16, proficiencyLevel: 1 },
+        { skillId: 17, proficiencyLevel: 1 },
+        { skillId: 18, proficiencyLevel: 1 },
+      ],
+    },
+    {
+      employeeId: 'kahlid',
+      employeeName: 'Mohamed Khalid',
+      emailAddress: 'kahlid@adobe.com',
+      profileImageUrl: null,
+      designation: 'Technical Architect',
+      skillSet: [
+        { skillId: 1, proficiencyLevel: 5 },
+        { skillId: 2, proficiencyLevel: 5 },
+        { skillId: 3, proficiencyLevel: 5 },
+        { skillId: 4, proficiencyLevel: 5 },
+        { skillId: 5, proficiencyLevel: 5 },
+        { skillId: 6, proficiencyLevel: 3 },
+        { skillId: 7, proficiencyLevel: 1 },
+        { skillId: 8, proficiencyLevel: 1 },
+        { skillId: 9, proficiencyLevel: 1 },
+        { skillId: 10, proficiencyLevel: 4 },
+        { skillId: 11, proficiencyLevel: 3 },
+        { skillId: 12, proficiencyLevel: 4 },
+        { skillId: 13, proficiencyLevel: 4 },
+        { skillId: 14, proficiencyLevel: 1 },
+        { skillId: 15, proficiencyLevel: 5 },
+        { skillId: 16, proficiencyLevel: 1 },
+        { skillId: 17, proficiencyLevel: 1 },
+        { skillId: 18, proficiencyLevel: 1 },
+      ],
+    },
+    {
+      employeeId: 'karpandu',
+      employeeName: 'Karvannan Pandurangan',
+      emailAddress: 'karpandu@adobe.com',
+      profileImageUrl: null,
+      designation: 'Sr Technical Consultant',
+      skillSet: [
+        { skillId: 1, proficiencyLevel: 5 },
+        { skillId: 2, proficiencyLevel: 5 },
+        { skillId: 3, proficiencyLevel: 5 },
+        { skillId: 4, proficiencyLevel: 5 },
+        { skillId: 5, proficiencyLevel: 5 },
+        { skillId: 6, proficiencyLevel: 3 },
+        { skillId: 7, proficiencyLevel: 3 },
+        { skillId: 8, proficiencyLevel: 3 },
+        { skillId: 9, proficiencyLevel: 3 },
+        { skillId: 10, proficiencyLevel: 4 },
+        { skillId: 11, proficiencyLevel: 3 },
+        { skillId: 12, proficiencyLevel: 4 },
+        { skillId: 13, proficiencyLevel: 4 },
+        { skillId: 14, proficiencyLevel: 3 },
+        { skillId: 15, proficiencyLevel: 4 },
+        { skillId: 16, proficiencyLevel: 3 },
+        { skillId: 17, proficiencyLevel: 1 },
+        { skillId: 18, proficiencyLevel: 3 },
+      ],
+    },
+    {
+      employeeId: 'adarshn',
+      employeeName: 'Adarsh Chandra Nanda',
+      emailAddress: 'adarshn@adobe.com',
+      profileImageUrl: null,
+      designation: 'Sr Technical Consultant',
+      skillSet: [
+        { skillId: 1, proficiencyLevel: 5 },
+        { skillId: 2, proficiencyLevel: 5 },
+        { skillId: 3, proficiencyLevel: 5 },
+        { skillId: 4, proficiencyLevel: 5 },
+        { skillId: 5, proficiencyLevel: 5 },
+        { skillId: 6, proficiencyLevel: 1 },
+        { skillId: 7, proficiencyLevel: 1 },
+        { skillId: 8, proficiencyLevel: 1 },
+        { skillId: 9, proficiencyLevel: 2 },
+        { skillId: 10, proficiencyLevel: 5 },
+        { skillId: 11, proficiencyLevel: 3 },
+        { skillId: 12, proficiencyLevel: 5 },
+        { skillId: 13, proficiencyLevel: 5 },
+        { skillId: 14, proficiencyLevel: 1 },
+        { skillId: 15, proficiencyLevel: 5 },
+        { skillId: 16, proficiencyLevel: 1 },
+        { skillId: 17, proficiencyLevel: 1 },
+        { skillId: 18, proficiencyLevel: 2 },
+      ],
+    },
+    {
+      employeeId: 'arulk',
+      employeeName: 'Arul Kumar',
+      emailAddress: 'arulk@adobe.com',
+      profileImageUrl: null,
+      designation: 'Technical Architect',
+      skillSet: [
+        { skillId: 1, proficiencyLevel: 5 },
+        { skillId: 2, proficiencyLevel: 5 },
+        { skillId: 3, proficiencyLevel: 5 },
+        { skillId: 4, proficiencyLevel: 5 },
+        { skillId: 5, proficiencyLevel: 5 },
+        { skillId: 6, proficiencyLevel: 3 },
+        { skillId: 7, proficiencyLevel: 2 },
+        { skillId: 8, proficiencyLevel: 1 },
+        { skillId: 9, proficiencyLevel: 1 },
+        { skillId: 10, proficiencyLevel: 4 },
+        { skillId: 11, proficiencyLevel: 3 },
+        { skillId: 12, proficiencyLevel: 4 },
+        { skillId: 13, proficiencyLevel: 5 },
+        { skillId: 14, proficiencyLevel: 3 },
+        { skillId: 15, proficiencyLevel: 5 },
+        { skillId: 16, proficiencyLevel: 1 },
+        { skillId: 17, proficiencyLevel: 1 },
+        { skillId: 18, proficiencyLevel: 1 },
+      ],
+    },
+    {
+      employeeId: 'chethankuma',
+      employeeName: 'Chethan Kumar',
+      emailAddress: 'chethankuma@adobe.com',
+      profileImageUrl: null,
+      designation: 'Sr Technical Consultant',
+      skillSet: [
+        { skillId: 1, proficiencyLevel: 5 },
+        { skillId: 2, proficiencyLevel: 5 },
+        { skillId: 3, proficiencyLevel: 5 },
+        { skillId: 4, proficiencyLevel: 5 },
+        { skillId: 5, proficiencyLevel: 5 },
+        { skillId: 6, proficiencyLevel: 3 },
+        { skillId: 7, proficiencyLevel: 1 },
+        { skillId: 8, proficiencyLevel: 1 },
+        { skillId: 9, proficiencyLevel: 3 },
+        { skillId: 10, proficiencyLevel: 4 },
+        { skillId: 11, proficiencyLevel: 3 },
+        { skillId: 12, proficiencyLevel: 4 },
+        { skillId: 13, proficiencyLevel: 5 },
+        { skillId: 14, proficiencyLevel: 3 },
+        { skillId: 15, proficiencyLevel: 4 },
+        { skillId: 16, proficiencyLevel: 1 },
+        { skillId: 17, proficiencyLevel: 1 },
+        { skillId: 18, proficiencyLevel: 3 },
+      ],
+    },
+    {
+      employeeId: 'khokhard',
+      employeeName: 'Deepak khokha',
+      emailAddress: 'khokhard@adobe.com',
+      profileImageUrl: null,
+      designation: 'Technical Architect',
+      skillSet: [
+        { skillId: 1, proficiencyLevel: 5 },
+        { skillId: 2, proficiencyLevel: 5 },
+        { skillId: 3, proficiencyLevel: 5 },
+        { skillId: 4, proficiencyLevel: 5 },
+        { skillId: 5, proficiencyLevel: 5 },
+        { skillId: 6, proficiencyLevel: 3 },
+        { skillId: 7, proficiencyLevel: 3 },
+        { skillId: 8, proficiencyLevel: 1 },
+        { skillId: 9, proficiencyLevel: 3 },
+        { skillId: 10, proficiencyLevel: 5 },
+        { skillId: 11, proficiencyLevel: 5 },
+        { skillId: 12, proficiencyLevel: 3 },
+        { skillId: 13, proficiencyLevel: 5 },
+        { skillId: 14, proficiencyLevel: 3 },
+        { skillId: 15, proficiencyLevel: 1 },
+        { skillId: 16, proficiencyLevel: 1 },
+        { skillId: 17, proficiencyLevel: 1 },
+        { skillId: 18, proficiencyLevel: 1 },
+      ],
+    },
+    {
+      employeeId: 'vvenkateshku',
+      employeeName: 'Vigneshwaran Venkateshkuma',
+      emailAddress: 'vvenkateshku@adobe.com',
+      profileImageUrl: null,
+      designation: 'Sr Technical Consultant',
+      skillSet: [
+        { skillId: 1, proficiencyLevel: 5 },
+        { skillId: 2, proficiencyLevel: 5 },
+        { skillId: 3, proficiencyLevel: 5 },
+        { skillId: 4, proficiencyLevel: 5 },
+        { skillId: 5, proficiencyLevel: 5 },
+        { skillId: 6, proficiencyLevel: 5 },
+        { skillId: 7, proficiencyLevel: 1 },
+        { skillId: 8, proficiencyLevel: 1 },
+        { skillId: 9, proficiencyLevel: 3 },
+        { skillId: 10, proficiencyLevel: 5 },
+        { skillId: 11, proficiencyLevel: 5 },
+        { skillId: 12, proficiencyLevel: 5 },
+        { skillId: 13, proficiencyLevel: 3 },
+        { skillId: 14, proficiencyLevel: 5 },
+        { skillId: 15, proficiencyLevel: 3 },
+        { skillId: 16, proficiencyLevel: 3 },
+        { skillId: 17, proficiencyLevel: 1 },
+        { skillId: 18, proficiencyLevel: 3 },
+      ],
+    },
+    {
+      employeeId: 'varundixit',
+      employeeName: 'Varun Dixit',
+      emailAddress: 'varundixit@adobe.com',
+      profileImageUrl: null,
+      designation: 'Sr Technical Consultant',
+      skillSet: [
+        { skillId: 1, proficiencyLevel: 5 },
+        { skillId: 2, proficiencyLevel: 5 },
+        { skillId: 3, proficiencyLevel: 5 },
+        { skillId: 4, proficiencyLevel: 5 },
+        { skillId: 5, proficiencyLevel: 5 },
+        { skillId: 6, proficiencyLevel: 2 },
+        { skillId: 7, proficiencyLevel: 1 },
+        { skillId: 8, proficiencyLevel: 1 },
+        { skillId: 9, proficiencyLevel: 3 },
+        { skillId: 10, proficiencyLevel: 3 },
+        { skillId: 11, proficiencyLevel: 1 },
+        { skillId: 12, proficiencyLevel: 2 },
+        { skillId: 13, proficiencyLevel: 3 },
+        { skillId: 14, proficiencyLevel: 3 },
+        { skillId: 15, proficiencyLevel: 3 },
+        { skillId: 16, proficiencyLevel: 3 },
+        { skillId: 17, proficiencyLevel: 1 },
+        { skillId: 18, proficiencyLevel: 1 },
+      ],
+    },
+    {
+      employeeId: 'svishwakarma',
+      employeeName: 'Sanjay Vishwakarma',
+      emailAddress: 'svishwakarma@adobe.com',
+      profileImageUrl: null,
+      designation: 'Sr Technical Consultant',
+      skillSet: [
+        { skillId: 1, proficiencyLevel: 5 },
+        { skillId: 2, proficiencyLevel: 5 },
+        { skillId: 3, proficiencyLevel: 5 },
+        { skillId: 4, proficiencyLevel: 5 },
+        { skillId: 5, proficiencyLevel: 5 },
+        { skillId: 6, proficiencyLevel: 3 },
+        { skillId: 7, proficiencyLevel: 1 },
+        { skillId: 8, proficiencyLevel: 1 },
+        { skillId: 9, proficiencyLevel: 3 },
+        { skillId: 10, proficiencyLevel: 5 },
+        { skillId: 11, proficiencyLevel: 3 },
+        { skillId: 12, proficiencyLevel: 3 },
+        { skillId: 13, proficiencyLevel: 5 },
+        { skillId: 14, proficiencyLevel: 1 },
+        { skillId: 15, proficiencyLevel: 3 },
+        { skillId: 16, proficiencyLevel: 1 },
+        { skillId: 17, proficiencyLevel: 1 },
+        { skillId: 18, proficiencyLevel: 1 },
+      ],
+    },
+  ],
 };
 
-const LEVEL_NAMES = ['Not assessed', 'Foundational', 'Developing', 'Professional', 'Expert', 'Master'];
+const CATEGORY_ORDER = SKILL_PROFILE_DATA.metadata.categories
+  .map((category) => category.categoryName);
 
-const CATEGORIES = ['Generic Skill', 'Niche Skill', 'Super Niche', 'Ultra Niche'];
-
-const FILTER_OPTIONS = ['All', ...CATEGORIES];
+const FILTER_OPTIONS = ['All', ...CATEGORY_ORDER];
 
 function getInitials(name) {
   const parts = name.split(/\s+/).filter(Boolean);
@@ -155,7 +407,9 @@ function getEmployeeIdFromUrl() {
 }
 
 function getLevelName(level) {
-  return LEVEL_NAMES[level] || 'Not assessed';
+  const match = SKILL_PROFILE_DATA.metadata.proficiencyLevels
+    .find((entry) => entry.proficiencyLevel === level);
+  return match?.proficiencyLevelName || 'Not assessed';
 }
 
 function createButton(text, variant = 'secondary') {
@@ -164,6 +418,24 @@ function createButton(text, variant = 'secondary') {
   button.className = `skill-profile__button skill-profile__button--${variant}`;
   button.textContent = text;
   return button;
+}
+
+function createBackButton(path) {
+  const link = document.createElement('a');
+  link.className = 'skill-profile__back-button';
+  link.href = path;
+
+  const icon = document.createElement('span');
+  icon.className = 'skill-profile__back-button-icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = '<-';
+
+  const label = document.createElement('span');
+  label.className = 'skill-profile__back-button-label';
+  label.textContent = 'Back';
+
+  link.append(icon, label);
+  return link;
 }
 
 function createEmptyState(message) {
@@ -181,11 +453,53 @@ function buildSkillMap(skills) {
 }
 
 function buildProfileSkills(skillsMap) {
-  return SKILLS_CATALOGUE.map((skill) => ({
-    ...skill,
-    actual: skillsMap[skill.skillId] || 0,
-    expected: EXPECTED_LEVELS[skill.skillId] || 0,
-  }));
+  return SKILL_PROFILE_DATA.metadata.skills.map((skill) => {
+    const category = SKILL_PROFILE_DATA.metadata.categories
+      .find((entry) => entry.categoryId === skill.categoryId);
+
+    return {
+      skillId: skill.skillId,
+      name: skill.skillName,
+      category: category?.categoryName || 'Uncategorized',
+      actual: skillsMap[skill.skillId] || 0,
+      expected: 0,
+    };
+  });
+}
+
+function normalizeManagerProfile() {
+  return {
+    id: SKILL_PROFILE_DATA.manager.managerId,
+    name: SKILL_PROFILE_DATA.manager.managerName,
+    designation: SKILL_PROFILE_DATA.manager.designation,
+    department: 'ACS',
+    email: SKILL_PROFILE_DATA.manager.managerEmail,
+    skills: [],
+  };
+}
+
+function normalizeEmployeeProfile(employee) {
+  return {
+    id: employee.employeeId,
+    name: employee.employeeName,
+    designation: employee.designation,
+    department: 'ACS',
+    email: employee.emailAddress,
+    skills: employee.skillSet || [],
+  };
+}
+
+function findProfileById(employeeId) {
+  if (employeeId === SKILL_PROFILE_DATA.manager.managerId) {
+    return normalizeManagerProfile();
+  }
+
+  const employee = SKILL_PROFILE_DATA.employees.find((entry) => entry.employeeId === employeeId);
+  if (!employee) {
+    return null;
+  }
+
+  return normalizeEmployeeProfile(employee);
 }
 
 function createAvatar(name) {
@@ -374,7 +688,7 @@ function createSkillSection(category, skills, state, refresh) {
   return section;
 }
 
-function createActionBar(state, refresh) {
+function createActionBar(state, onCancel, onSave) {
   if (!state.isEditing) {
     return null;
   }
@@ -383,39 +697,34 @@ function createActionBar(state, refresh) {
   bar.className = 'skill-profile__action-bar';
 
   const cancelButton = createButton('Cancel');
-  cancelButton.addEventListener('click', () => {
-    state.draft = { ...state.saved };
-    state.isEditing = false;
-    refresh();
-  });
+  cancelButton.addEventListener('click', onCancel);
 
   const updateButton = createButton('Update', 'primary');
-  updateButton.addEventListener('click', () => {
-    state.saved = { ...state.draft };
-    state.isEditing = false;
-    // TODO: replace with POST /api/v1/managers/{managerId}/employees/skills
-    refresh();
-  });
+  updateButton.addEventListener('click', onSave);
 
   bar.append(cancelButton, updateButton);
   return bar;
 }
 
-function renderProfile(block, employee, canEdit) {
+function renderProfile(block, employee, canEdit, backPath) {
   const state = {
     isEditing: false,
     activeFilter: 'All',
+    pendingExitAction: null,
+    historyStateActive: false,
     saved: buildSkillMap(employee.skills),
     draft: buildSkillMap(employee.skills),
   };
 
   const skills = buildProfileSkills(state.saved);
 
-  const refresh = () => {
+  function refresh() {
     block.textContent = '';
 
     const wrapper = document.createElement('div');
     wrapper.className = 'skill-profile__wrapper';
+
+    wrapper.append(createBackButton(backPath));
 
     const header = createHeader(employee, canEdit);
     const editButton = header.querySelector('.skill-profile__edit-toggle');
@@ -434,6 +743,11 @@ function renderProfile(block, employee, canEdit) {
         editButton.addEventListener('click', () => {
           state.draft = { ...state.saved };
           state.isEditing = true;
+          state.historyStateActive = true;
+          window.history.pushState({
+            ...window.history.state,
+            skillProfileEditMode: employee.id,
+          }, '', window.location.href);
           refresh();
         });
       }
@@ -443,7 +757,7 @@ function renderProfile(block, employee, canEdit) {
 
     wrapper.append(createFilter(state, refresh));
 
-    CATEGORIES.forEach((category) => {
+    CATEGORY_ORDER.forEach((category) => {
       if (state.activeFilter !== 'All' && state.activeFilter !== category) {
         return;
       }
@@ -452,13 +766,53 @@ function renderProfile(block, employee, canEdit) {
       wrapper.append(createSkillSection(category, categorySkills, state, refresh));
     });
 
-    const actionBar = createActionBar(state, refresh);
+    const actionBar = createActionBar(
+      state,
+      () => exitEditMode('cancel'),
+      () => {
+        // TODO: replace with POST /api/v1/managers/{managerId}/employees/skills
+        exitEditMode('save');
+      },
+    );
     if (actionBar) {
       wrapper.append(actionBar);
     }
 
     block.append(wrapper);
-  };
+  }
+
+  function applyExitFromEditMode(action = 'cancel') {
+    if (action === 'save') {
+      state.saved = { ...state.draft };
+    } else {
+      state.draft = { ...state.saved };
+    }
+
+    state.isEditing = false;
+    state.historyStateActive = false;
+    state.pendingExitAction = null;
+    refresh();
+  }
+
+  function exitEditMode(action = 'cancel') {
+    if (state.historyStateActive) {
+      state.pendingExitAction = action;
+      window.history.back();
+      return;
+    }
+
+    applyExitFromEditMode(action);
+  }
+
+  function handlePopState() {
+    if (!state.historyStateActive) {
+      return;
+    }
+
+    applyExitFromEditMode(state.pendingExitAction || 'cancel');
+  }
+
+  window.addEventListener('popstate', handlePopState);
 
   refresh();
 }
@@ -467,7 +821,8 @@ export default function decorate(block) {
   const config = readBlockConfig(block);
   const employeeId = getEmployeeIdFromUrl() || config['employee-id'] || '';
   const role = (config.role || 'employee').toLowerCase();
-  const employee = EMPLOYEES.find((entry) => entry.id === employeeId);
+  const backPath = config['back-path'] || '/';
+  const employee = findProfileById(employeeId);
 
   block.textContent = '';
 
@@ -476,5 +831,5 @@ export default function decorate(block) {
     return;
   }
 
-  renderProfile(block, employee, role === 'manager');
+  renderProfile(block, employee, role === 'manager', backPath);
 }
