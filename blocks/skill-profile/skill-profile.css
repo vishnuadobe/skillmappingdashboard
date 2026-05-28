@@ -19,49 +19,55 @@
 .skill-profile .skill-profile__back-button {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  width: fit-content;
-  min-height: 42px;
-  padding: 0 16px 0 12px;
-  border: 1px solid var(--skill-profile-border);
-  border-radius: 999px;
-  background: #fff;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
   color: var(--skill-profile-text);
-  font-weight: 600;
   text-decoration: none;
-  box-shadow: var(--skill-profile-shadow);
   transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease,
+    color 160ms ease,
     transform 160ms ease;
 }
 
 .skill-profile .skill-profile__back-button:hover,
 .skill-profile .skill-profile__back-button:focus-visible {
-  border-color: #c6c6c6;
-  transform: translateY(-1px);
+  color: var(--skill-profile-accent-strong);
 }
 
 .skill-profile .skill-profile__back-button:focus-visible {
   outline: none;
-  box-shadow: var(--skill-profile-focus), var(--skill-profile-shadow);
+  box-shadow: none;
 }
 
 .skill-profile .skill-profile__back-button-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #edf5ff;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--skill-profile-border);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, #fff 0%, #f6f6f6 100%);
   color: var(--skill-profile-accent-strong);
-  font-size: 0.8rem;
+  box-shadow: 0 4px 10px rgb(0 0 0 / 4%);
+  font-size: 0.95rem;
+  font-weight: 700;
   line-height: 1;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
 }
 
-.skill-profile .skill-profile__back-button-label {
-  line-height: 1;
+.skill-profile .skill-profile__back-button:hover .skill-profile__back-button-icon,
+.skill-profile .skill-profile__back-button:focus-visible .skill-profile__back-button-icon {
+  border-color: #bfdcff;
+  background: linear-gradient(180deg, #fefefe 0%, #edf5ff 100%);
+  transform: translateX(-2px);
 }
 
 .skill-profile .skill-profile__header,

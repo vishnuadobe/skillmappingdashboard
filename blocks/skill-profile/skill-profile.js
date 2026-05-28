@@ -424,17 +424,14 @@ function createBackButton(path) {
   const link = document.createElement('a');
   link.className = 'skill-profile__back-button';
   link.href = path;
+  link.setAttribute('aria-label', 'Go back');
 
   const icon = document.createElement('span');
   icon.className = 'skill-profile__back-button-icon';
   icon.setAttribute('aria-hidden', 'true');
-  icon.textContent = '<-';
+  icon.textContent = '<';
 
-  const label = document.createElement('span');
-  label.className = 'skill-profile__back-button-label';
-  label.textContent = 'Back';
-
-  link.append(icon, label);
+  link.append(icon);
   return link;
 }
 
