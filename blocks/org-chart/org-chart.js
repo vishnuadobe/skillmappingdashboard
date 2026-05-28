@@ -213,12 +213,12 @@ function normalizeData(data) {
 
 export default function decorate(block) {
   const config = readBlockConfig(block);
-  const headingText = config.heading || 'Skill Navigator';
   const view = (config.view || 'manager').toLowerCase();
   const userId = config['user-id'] || ORG_DATA.manager.managerId;
   const profilePath = config['profile-path'] || '/empprofile';
 
   const { manager, employees } = normalizeData(ORG_DATA);
+  const headingText = config.heading || `Welcome, ${userId === manager.id ? manager.name : userId}`;
 
   block.textContent = '';
 
@@ -235,7 +235,9 @@ export default function decorate(block) {
 
   const meta = document.createElement('p');
   meta.className = 'org-chart__meta';
-  meta.textContent = `Mock manager view for ${userId}`;
+  meta.textContent = userId === manager.id
+    ? `${manager.designation} dashboard`
+    : `Manager dashboard for ${userId}`;
   header.append(meta);
 
   wrapper.append(header);
