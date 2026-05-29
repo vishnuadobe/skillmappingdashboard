@@ -1,4 +1,6 @@
 .entry-form {
+  display: none;
+
   --entry-form-accent: #1473e6;
   --entry-form-accent-strong: #0d66d0;
   --entry-form-border: #d8dee8;

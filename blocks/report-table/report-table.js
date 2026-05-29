@@ -59,10 +59,9 @@ function normalizeRows() {
 
     return {
       employee: entry.employeeName,
-      manager: entry.managerName,
       skill: skill?.skillName || 'Unknown Skill',
       experienceMonths: entry.experienceMonths,
-      level: level ? `${level.level} - ${level.label}` : 'Not mapped',
+      level: level ? `${level.level} — ${level.label}` : 'Not mapped',
       certified: entry.certified ? 'Yes' : 'No',
     };
   });
@@ -70,8 +69,8 @@ function normalizeRows() {
 
 export default function decorate(block) {
   const config = readBlockConfig(block);
+  const manager = MANAGERS[0];
   const state = {
-    manager: 'All',
     skill: 'All',
     level: 'All',
   };
@@ -82,9 +81,6 @@ export default function decorate(block) {
 
   function getFilteredRows() {
     return rows.filter((row) => {
-      if (state.manager !== 'All' && row.manager !== state.manager) {
-        return false;
-      }
       if (state.skill !== 'All' && row.skill !== state.skill) {
         return false;
       }
@@ -119,10 +115,9 @@ export default function decorate(block) {
   function handleExport() {
     const filteredRows = getFilteredRows();
     const csvRows = [
-      ['Employee', 'Reporting Manager', 'Skill', 'Experience (Months)', 'Level', 'Certified'],
+      ['Employee', 'Skill', 'Experience (Months)', 'Level', 'Certified'],
       ...filteredRows.map((row) => [
         row.employee,
-        row.manager,
         row.skill,
         row.experienceMonths,
         row.level,
@@ -134,25 +129,25 @@ export default function decorate(block) {
   }
 
   render = function renderReportTable() {
-    const filteredRows = getFilteredRows();
     block.textContent = '';
 
     const wrapper = createElement('div', 'report-table__wrapper');
-    wrapper.append(createElement('h2', 'report-table__heading', config.heading || 'Manager Skill Report'));
-    wrapper.append(createElement(
-      'p',
-      'report-table__meta',
-      'Read-only report view for Phase 1 with manager, skill, and level filters.',
-    ));
+
+    // Header
+    const header = createElement('div', 'report-table__header');
+    const accent = createElement('span', 'report-table__heading-accent');
+    const heading = createElement('h2', 'report-table__heading', config.heading || `Welcome, ${manager.name}`);
+    const meta = createElement('p', 'report-table__meta', 'Manager View');
+    header.append(accent, heading, meta);
+    wrapper.append(header);
+
+    // Body
+    const body = createElement('div', 'report-table__body');
+
+    const filteredRows = getFilteredRows();
 
     const controls = createElement('div', 'report-table__controls');
     controls.append(
-      buildSelect(
-        'Manager',
-        state.manager,
-        ['All', ...MANAGERS.map((entry) => entry.name)],
-        (nextValue) => { state.manager = nextValue; },
-      ),
       buildSelect(
         'Skill',
         state.skill,
@@ -171,20 +166,20 @@ export default function decorate(block) {
     exportButton.type = 'button';
     exportButton.addEventListener('click', handleExport);
     controls.append(exportButton);
-    wrapper.append(controls);
+    body.append(controls);
 
     const count = createElement(
       'p',
       'report-table__count',
       `${filteredRows.length} submission${filteredRows.length === 1 ? '' : 's'}`,
     );
-    wrapper.append(count);
+    body.append(count);
 
     const tableWrapper = createElement('div', 'report-table__table-wrapper');
     const table = createElement('table', 'report-table__table');
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    ['Employee', 'Reporting Manager', 'Skill', 'Experience (Months)', 'Level', 'Certified'].forEach((label) => {
+    ['Employee', 'Skill', 'Experience (Months)', 'Level', 'Certified'].forEach((label) => {
       headerRow.append(createElement('th', '', label));
     });
     thead.append(headerRow);
@@ -195,7 +190,6 @@ export default function decorate(block) {
       const tr = document.createElement('tr');
       [
         row.employee,
-        row.manager,
         row.skill,
         String(row.experienceMonths),
         row.level,
@@ -209,14 +203,15 @@ export default function decorate(block) {
     if (filteredRows.length === 0) {
       const emptyRow = document.createElement('tr');
       const emptyCell = createElement('td', 'report-table__empty', 'No submissions match the current filters.');
-      emptyCell.colSpan = 6;
+      emptyCell.colSpan = 5;
       emptyRow.append(emptyCell);
       tbody.append(emptyRow);
     }
 
     table.append(tbody);
     tableWrapper.append(table);
-    wrapper.append(tableWrapper);
+    body.append(tableWrapper);
+    wrapper.append(body);
     block.append(wrapper);
   };
 
