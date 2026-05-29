@@ -24,78 +24,56 @@ export const SKILL_CATALOG = [
 ];
 
 export const MOCK_SUBMISSIONS = [
-  {
-    employeeId: 'abaskaran',
-    employeeName: 'Aravind Baskaran',
-    managerId: 'atul-bansal',
-    managerName: 'Atul Bansal',
-    skillId: 15,
-    experienceMonths: 18,
-    certified: true,
-  },
-  {
-    employeeId: 'robinvarshn',
-    employeeName: 'Robin Varshney',
-    managerId: 'atul-bansal',
-    managerName: 'Atul Bansal',
-    skillId: 9,
-    experienceMonths: 22,
-    certified: true,
-  },
-  {
-    employeeId: 'shivamsharma',
-    employeeName: 'Shivam Sharma',
-    managerId: 'atul-bansal',
-    managerName: 'Atul Bansal',
-    skillId: 10,
-    experienceMonths: 14,
-    certified: false,
-  },
-  {
-    employeeId: 'kahlid',
-    employeeName: 'Mohamed Khalid',
-    managerId: 'atul-bansal',
-    managerName: 'Atul Bansal',
-    skillId: 3,
-    experienceMonths: 30,
-    certified: false,
-  },
-  {
-    employeeId: 'adarshn',
-    employeeName: 'Adarsh Chandra Nanda',
-    managerId: 'atul-bansal',
-    managerName: 'Atul Bansal',
-    skillId: 12,
-    experienceMonths: 11,
-    certified: true,
-  },
-  {
-    employeeId: 'arulk',
-    employeeName: 'Arul Kumar',
-    managerId: 'atul-bansal',
-    managerName: 'Atul Bansal',
-    skillId: 17,
-    experienceMonths: 8,
-    certified: false,
-  },
-  {
-    employeeId: 'chethankuma',
-    employeeName: 'Chethan Kumar',
-    managerId: 'atul-bansal',
-    managerName: 'Atul Bansal',
-    skillId: 18,
-    experienceMonths: 19,
-    certified: true,
-  },
-  {
-    employeeId: 'varundixit',
-    employeeName: 'Varun Dixit',
-    managerId: 'atul-bansal',
-    managerName: 'Atul Bansal',
-    skillId: 5,
-    experienceMonths: 6,
-    certified: false,
-  },
+  // Aravind Baskaran
+  { employeeId: 'abaskaran', employeeName: 'Aravind Baskaran', skillId: 1, experienceMonths: 36, certified: true },
+  { employeeId: 'abaskaran', employeeName: 'Aravind Baskaran', skillId: 2, experienceMonths: 30, certified: false },
+  { employeeId: 'abaskaran', employeeName: 'Aravind Baskaran', skillId: 3, experienceMonths: 36, certified: true },
+  { employeeId: 'abaskaran', employeeName: 'Aravind Baskaran', skillId: 4, experienceMonths: 18, certified: false },
+  { employeeId: 'abaskaran', employeeName: 'Aravind Baskaran', skillId: 15, experienceMonths: 18, certified: true },
+
+  // Robin Varshney
+  { employeeId: 'robinvarshn', employeeName: 'Robin Varshney', skillId: 3, experienceMonths: 36, certified: true },
+  { employeeId: 'robinvarshn', employeeName: 'Robin Varshney', skillId: 4, experienceMonths: 24, certified: true },
+  { employeeId: 'robinvarshn', employeeName: 'Robin Varshney', skillId: 5, experienceMonths: 22, certified: false },
+  { employeeId: 'robinvarshn', employeeName: 'Robin Varshney', skillId: 9, experienceMonths: 22, certified: true },
+  { employeeId: 'robinvarshn', employeeName: 'Robin Varshney', skillId: 10, experienceMonths: 18, certified: false },
+
+  // Shivam Sharma
+  { employeeId: 'shivamsharma', employeeName: 'Shivam Sharma', skillId: 1, experienceMonths: 24, certified: false },
+  { employeeId: 'shivamsharma', employeeName: 'Shivam Sharma', skillId: 3, experienceMonths: 24, certified: true },
+  { employeeId: 'shivamsharma', employeeName: 'Shivam Sharma', skillId: 4, experienceMonths: 12, certified: false },
+  { employeeId: 'shivamsharma', employeeName: 'Shivam Sharma', skillId: 10, experienceMonths: 14, certified: false },
+
+  // Mohamed Khalid
+  { employeeId: 'kahlid', employeeName: 'Mohamed Khalid', skillId: 1, experienceMonths: 36, certified: true },
+  { employeeId: 'kahlid', employeeName: 'Mohamed Khalid', skillId: 2, experienceMonths: 36, certified: false },
+  { employeeId: 'kahlid', employeeName: 'Mohamed Khalid', skillId: 3, experienceMonths: 30, certified: true },
+  { employeeId: 'kahlid', employeeName: 'Mohamed Khalid', skillId: 4, experienceMonths: 18, certified: false },
+  { employeeId: 'kahlid', employeeName: 'Mohamed Khalid', skillId: 15, experienceMonths: 14, certified: true },
+
+  // Adarsh Chandra Nanda
+  { employeeId: 'adarshn', employeeName: 'Adarsh Chandra Nanda', skillId: 1, experienceMonths: 30, certified: false },
+  { employeeId: 'adarshn', employeeName: 'Adarsh Chandra Nanda', skillId: 3, experienceMonths: 30, certified: true },
+  { employeeId: 'adarshn', employeeName: 'Adarsh Chandra Nanda', skillId: 12, experienceMonths: 11, certified: true },
+  { employeeId: 'adarshn', employeeName: 'Adarsh Chandra Nanda', skillId: 15, experienceMonths: 22, certified: true },
+
+  // Arul Kumar
+  { employeeId: 'arulk', employeeName: 'Arul Kumar', skillId: 1, experienceMonths: 36, certified: true },
+  { employeeId: 'arulk', employeeName: 'Arul Kumar', skillId: 2, experienceMonths: 30, certified: false },
+  { employeeId: 'arulk', employeeName: 'Arul Kumar', skillId: 3, experienceMonths: 36, certified: true },
+  { employeeId: 'arulk', employeeName: 'Arul Kumar', skillId: 15, experienceMonths: 16, certified: false },
+
+  // Chethan Kumar
+  { employeeId: 'chethankuma', employeeName: 'Chethan Kumar', skillId: 1, experienceMonths: 30, certified: false },
+  { employeeId: 'chethankuma', employeeName: 'Chethan Kumar', skillId: 3, experienceMonths: 24, certified: true },
+  { employeeId: 'chethankuma', employeeName: 'Chethan Kumar', skillId: 10, experienceMonths: 15, certified: false },
+  { employeeId: 'chethankuma', employeeName: 'Chethan Kumar', skillId: 18, experienceMonths: 19, certified: true },
+
+  // Varun Dixit
+  { employeeId: 'varundixit', employeeName: 'Varun Dixit', skillId: 1, experienceMonths: 18, certified: false },
+  { employeeId: 'varundixit', employeeName: 'Varun Dixit', skillId: 2, experienceMonths: 18, certified: false },
+  { employeeId: 'varundixit', employeeName: 'Varun Dixit', skillId: 3, experienceMonths: 12, certified: true },
+  { employeeId: 'varundixit', employeeName: 'Varun Dixit', skillId: 5, experienceMonths: 6, certified: false },
 ];
 
 export function getSkillById(skillId) {
