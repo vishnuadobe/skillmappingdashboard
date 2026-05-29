@@ -92,10 +92,15 @@
   padding: 28px;
 }
 
-.entry-form .entry-form__form,
+.entry-form .entry-form__form {
+  display: grid;
+  gap: 20px;
+}
+
 .entry-form .entry-form__preview,
 .entry-form .entry-form__success {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 20px;
 }
 
@@ -320,13 +325,13 @@
   }
 
   /* Skill Name and Experience side by side, rest full width */
-  .entry-form .entry-form__field:nth-child(1),
-  .entry-form .entry-form__field:nth-child(2) {
+  .entry-form .entry-form__form .entry-form__field:nth-child(1),
+  .entry-form .entry-form__form .entry-form__field:nth-child(2) {
     grid-column: span 1;
   }
 
-  .entry-form .entry-form__field:nth-child(n + 3),
-  .entry-form .entry-form__actions {
+  .entry-form .entry-form__form .entry-form__field:nth-child(n + 3),
+  .entry-form .entry-form__form .entry-form__actions {
     grid-column: span 2;
   }
 }
