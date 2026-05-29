@@ -1,0 +1,191 @@
+.entry-form {
+  --entry-form-accent: #1473e6;
+  --entry-form-accent-strong: #0d66d0;
+  --entry-form-border: #d8dee8;
+  --entry-form-surface: #fff;
+  --entry-form-surface-alt: #f8fbff;
+  --entry-form-text: #1f2937;
+  --entry-form-text-muted: #637083;
+  --entry-form-success: #0f766e;
+  --entry-form-danger: #c2410c;
+  --entry-form-shadow: 0 18px 40px rgb(15 23 42 / 8%);
+}
+
+.entry-form .entry-form__wrapper {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid var(--entry-form-border);
+  border-radius: 24px;
+  background: linear-gradient(180deg, #fff 0%, #f9fbff 100%);
+  box-shadow: var(--entry-form-shadow);
+}
+
+.entry-form .entry-form__heading {
+  margin: 0;
+  color: var(--entry-form-text);
+  font-size: 1.85rem;
+  line-height: 1.15;
+}
+
+.entry-form .entry-form__meta,
+.entry-form .entry-form__intro {
+  margin: 0;
+  color: var(--entry-form-text-muted);
+}
+
+.entry-form .entry-form__form,
+.entry-form .entry-form__preview,
+.entry-form .entry-form__success {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid var(--entry-form-border);
+  border-radius: 20px;
+  background: var(--entry-form-surface);
+}
+
+.entry-form .entry-form__field {
+  display: grid;
+  gap: 8px;
+}
+
+.entry-form .entry-form__label,
+.entry-form .entry-form__summary-label {
+  color: var(--entry-form-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.entry-form select,
+.entry-form input[type='number'],
+.entry-form input[type='file'] {
+  min-height: 46px;
+  width: 100%;
+  padding: 0 14px;
+  border: 1px solid var(--entry-form-border);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--entry-form-text);
+  font: inherit;
+}
+
+.entry-form input[type='file'] {
+  padding: 10px 14px;
+}
+
+.entry-form .entry-form__radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.entry-form .entry-form__radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--entry-form-border);
+  border-radius: 999px;
+  color: var(--entry-form-text);
+}
+
+.entry-form .entry-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.entry-form .entry-form__button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--entry-form-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--entry-form-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.entry-form .entry-form__button--primary {
+  border-color: var(--entry-form-accent);
+  background: var(--entry-form-accent);
+  color: #fff;
+}
+
+.entry-form .entry-form__button:hover,
+.entry-form .entry-form__button:focus-visible {
+  border-color: var(--entry-form-accent);
+}
+
+.entry-form .entry-form__button--primary:hover,
+.entry-form .entry-form__button--primary:focus-visible {
+  background: var(--entry-form-accent-strong);
+  border-color: var(--entry-form-accent-strong);
+}
+
+.entry-form .entry-form__message {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  font-weight: 600;
+}
+
+.entry-form .entry-form__message--error {
+  background: #fff2eb;
+  color: var(--entry-form-danger);
+}
+
+.entry-form .entry-form__message--success {
+  background: #ecfdf5;
+  color: var(--entry-form-success);
+}
+
+.entry-form .entry-form__preview-heading {
+  margin: 0;
+  color: var(--entry-form-text);
+  font-size: 1.25rem;
+}
+
+.entry-form .entry-form__summary {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.entry-form .entry-form__summary-row {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--entry-form-surface-alt);
+}
+
+.entry-form .entry-form__summary-value {
+  margin: 0;
+  color: var(--entry-form-text-muted);
+}
+
+.entry-form .entry-form__certificate-preview {
+  width: min(100%, 320px);
+  border-radius: 16px;
+  border: 1px solid var(--entry-form-border);
+}
+
+@media (width >= 900px) {
+  .entry-form .entry-form__wrapper {
+    padding: 32px;
+  }
+
+  .entry-form .entry-form__form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .entry-form .entry-form__field,
+  .entry-form .entry-form__actions {
+    grid-column: span 2;
+  }
+}
+

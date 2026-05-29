@@ -714,8 +714,32 @@ function renderProfile(block, employee, canEdit, backPath) {
   };
 
   const skills = buildProfileSkills(state.saved);
+  let refresh;
 
-  function refresh() {
+  function applyExitFromEditMode(action = 'cancel') {
+    if (action === 'save') {
+      state.saved = { ...state.draft };
+    } else {
+      state.draft = { ...state.saved };
+    }
+
+    state.isEditing = false;
+    state.historyStateActive = false;
+    state.pendingExitAction = null;
+    refresh();
+  }
+
+  function exitEditMode(action = 'cancel') {
+    if (state.historyStateActive) {
+      state.pendingExitAction = action;
+      window.history.back();
+      return;
+    }
+
+    applyExitFromEditMode(action);
+  }
+
+  refresh = function refreshProfile() {
     block.textContent = '';
 
     const wrapper = document.createElement('div');
@@ -776,30 +800,7 @@ function renderProfile(block, employee, canEdit, backPath) {
     }
 
     block.append(wrapper);
-  }
-
-  function applyExitFromEditMode(action = 'cancel') {
-    if (action === 'save') {
-      state.saved = { ...state.draft };
-    } else {
-      state.draft = { ...state.saved };
-    }
-
-    state.isEditing = false;
-    state.historyStateActive = false;
-    state.pendingExitAction = null;
-    refresh();
-  }
-
-  function exitEditMode(action = 'cancel') {
-    if (state.historyStateActive) {
-      state.pendingExitAction = action;
-      window.history.back();
-      return;
-    }
-
-    applyExitFromEditMode(action);
-  }
+  };
 
   function handlePopState() {
     if (!state.historyStateActive) {
