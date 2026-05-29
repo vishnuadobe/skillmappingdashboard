@@ -1,9 +1,5 @@
 export const MANAGERS = [
   { id: 'atul-bansal', name: 'Atul Bansal' },
-  { id: 'anuj-sharma', name: 'Anuj Sharma' },
-  { id: 'priya-menon', name: 'Priya Menon' },
-  { id: 'rahul-mehta', name: 'Rahul Mehta' },
-  { id: 'sneha-iyer', name: 'Sneha Iyer' },
 ];
 
 export const SKILL_CATALOG = [
@@ -49,8 +45,8 @@ export const MOCK_SUBMISSIONS = [
   {
     employeeId: 'shivamsharma',
     employeeName: 'Shivam Sharma',
-    managerId: 'anuj-sharma',
-    managerName: 'Anuj Sharma',
+    managerId: 'atul-bansal',
+    managerName: 'Atul Bansal',
     skillId: 10,
     experienceMonths: 14,
     certified: false,
@@ -67,8 +63,8 @@ export const MOCK_SUBMISSIONS = [
   {
     employeeId: 'adarshn',
     employeeName: 'Adarsh Chandra Nanda',
-    managerId: 'priya-menon',
-    managerName: 'Priya Menon',
+    managerId: 'atul-bansal',
+    managerName: 'Atul Bansal',
     skillId: 12,
     experienceMonths: 11,
     certified: true,
@@ -76,8 +72,8 @@ export const MOCK_SUBMISSIONS = [
   {
     employeeId: 'arulk',
     employeeName: 'Arul Kumar',
-    managerId: 'rahul-mehta',
-    managerName: 'Rahul Mehta',
+    managerId: 'atul-bansal',
+    managerName: 'Atul Bansal',
     skillId: 17,
     experienceMonths: 8,
     certified: false,
@@ -85,8 +81,8 @@ export const MOCK_SUBMISSIONS = [
   {
     employeeId: 'chethankuma',
     employeeName: 'Chethan Kumar',
-    managerId: 'sneha-iyer',
-    managerName: 'Sneha Iyer',
+    managerId: 'atul-bansal',
+    managerName: 'Atul Bansal',
     skillId: 18,
     experienceMonths: 19,
     certified: true,
@@ -104,4 +100,49 @@ export const MOCK_SUBMISSIONS = [
 
 export function getSkillById(skillId) {
   return SKILL_CATALOG.find((entry) => entry.skillId === skillId) || null;
+}
+
+function normalizeSkillName(skillName) {
+  return skillName.trim().toLowerCase();
+}
+
+export function getSkillByName(skillName) {
+  const normalizedSkillName = normalizeSkillName(skillName);
+  return SKILL_CATALOG.find(
+    (entry) => normalizeSkillName(entry.skillName) === normalizedSkillName,
+  ) || null;
+}
+
+export function getSkillAdoptionSnapshot(skillName, totalEmployees = 100) {
+  const normalizedSkillName = normalizeSkillName(skillName);
+  const submissionCount = MOCK_SUBMISSIONS.filter((entry) => {
+    const skill = getSkillById(entry.skillId);
+    return skill && normalizeSkillName(skill.skillName) === normalizedSkillName;
+  }).length;
+
+  const adoptionRate = totalEmployees > 0
+    ? Number(((submissionCount / totalEmployees) * 100).toFixed(1))
+    : 0;
+
+  return {
+    submissionCount,
+    totalEmployees,
+    adoptionRate,
+  };
+}
+
+export function getCategoryFromAdoptionRate(adoptionRate) {
+  if (adoptionRate <= 5) {
+    return 'Ultra Niche';
+  }
+
+  if (adoptionRate <= 15) {
+    return 'Super Niche';
+  }
+
+  if (adoptionRate <= 30) {
+    return 'Niche Skill';
+  }
+
+  return 'Generic Skill';
 }

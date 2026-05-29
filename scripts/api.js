@@ -50,7 +50,8 @@ export function buildSkillsPayload(
     employeeId,
     lastUpdated,
     skills: skillEntries.map((entry) => ({
-      skillId: entry.skillId,
+      ...(entry.skillId ? { skillId: entry.skillId } : {}),
+      ...(entry.skillName ? { skillName: entry.skillName } : {}),
       proficiencyLevel: entry.proficiencyLevel,
     })),
   };

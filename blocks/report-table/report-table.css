@@ -1,4 +1,6 @@
 .report-table {
+  display: none;
+
   --report-table-border: #d8dee8;
   --report-table-surface: #fff;
   --report-table-surface-alt: #f8fbff;

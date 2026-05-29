@@ -3,7 +3,11 @@ import {
   getLevelFromExperienceMonths,
   submitEmployeeSkills,
 } from '../../scripts/api.js';
-import { MANAGERS, SKILL_CATALOG, getSkillById } from '../../scripts/skill-data.js';
+import {
+  getCategoryFromAdoptionRate,
+  getSkillAdoptionSnapshot,
+  getSkillByName,
+} from '../../scripts/skill-data.js';
 
 function readBlockConfig(block) {
   return [...block.children].reduce((config, row) => {
@@ -94,8 +98,7 @@ export default function decorate(block) {
     simulateSubmit: toBoolean(config['simulate-submit'], true),
     values: {
       employeeId: config['employee-id'] || 'robinvarshn',
-      managerId: config['manager-id'] || MANAGERS[0].id,
-      skillId: String(SKILL_CATALOG[0].skillId),
+      skillName: config['skill-name'] || '',
       experienceMonths: '',
       certified: 'no',
       certificateFile: null,
@@ -104,29 +107,25 @@ export default function decorate(block) {
   };
   let render;
 
-  function getSelectedManager() {
-    return MANAGERS.find((entry) => entry.id === state.values.managerId) || MANAGERS[0];
-  }
-
-  function getSelectedSkill() {
-    return getSkillById(Number(state.values.skillId)) || SKILL_CATALOG[0];
-  }
-
   function getPreviewModel() {
-    const skill = getSelectedSkill();
+    const skillName = state.values.skillName.trim();
+    const catalogSkill = getSkillByName(skillName);
+    const skillSnapshot = getSkillAdoptionSnapshot(skillName);
     const level = getLevelFromExperienceMonths(state.values.experienceMonths);
-    const manager = getSelectedManager();
 
     return {
       employeeId: state.values.employeeId,
-      manager,
-      skill,
+      skillName,
+      skillId: catalogSkill?.skillId,
+      skillCategory: getCategoryFromAdoptionRate(skillSnapshot.adoptionRate),
+      skillSnapshot,
       experienceMonths: Number(state.values.experienceMonths),
       certified: state.values.certified === 'yes',
       level,
       certificateDataUri: state.values.certificateDataUri,
       payload: buildSkillsPayload(state.values.employeeId, [{
-        skillId: skill.skillId,
+        skillId: catalogSkill?.skillId,
+        skillName,
         proficiencyLevel: level?.level || 1,
       }]),
     };
@@ -136,11 +135,7 @@ export default function decorate(block) {
     const errors = [];
     const months = Number(state.values.experienceMonths);
 
-    if (!state.values.managerId) {
-      errors.push('Reporting manager is required.');
-    }
-
-    if (!state.values.skillId) {
+    if (!state.values.skillName.trim()) {
       errors.push('Skill name is required.');
     }
 
@@ -160,8 +155,8 @@ export default function decorate(block) {
         if (file.size > 50 * 1024) {
           errors.push('Certificate file must be 50 KB or smaller.');
         }
-        if (!file.type.startsWith('image/')) {
-          errors.push('Certificate file must be an image.');
+        if (file.type !== 'image/png') {
+          errors.push('Certificate file must be a PNG image.');
         }
       }
     }
@@ -200,12 +195,12 @@ export default function decorate(block) {
 
     try {
       if (!state.simulateSubmit) {
-        await submitEmployeeSkills(preview.manager.id, preview.payload);
+        await submitEmployeeSkills(preview.employeeId, preview.payload);
       }
 
       state.mode = 'success';
       state.message = state.simulateSubmit
-        ? 'Mock submission saved. API call is still disabled for this environment.'
+        ? 'Submission saved (simulated).'
         : 'Submission saved successfully.';
       state.messageType = 'success';
     } catch (error) {
@@ -240,42 +235,17 @@ export default function decorate(block) {
   }
 
   function renderForm(wrapper) {
-    const intro = createElement(
-      'p',
-      'entry-form__intro',
-      'Logins are out of scope for now, so this form uses a fixed employee id and focuses on the Phase 1 submission flow.',
-    );
-    wrapper.append(intro);
-
     const form = createElement('form', 'entry-form__form');
 
-    const managerSelect = document.createElement('select');
-    managerSelect.name = 'manager';
-    MANAGERS.forEach((manager) => {
-      const option = document.createElement('option');
-      option.value = manager.id;
-      option.textContent = manager.name;
-      option.selected = manager.id === state.values.managerId;
-      managerSelect.append(option);
+    const skillInput = document.createElement('input');
+    skillInput.type = 'text';
+    skillInput.name = 'skill-name';
+    skillInput.value = state.values.skillName;
+    skillInput.placeholder = 'e.g. Adobe EDS, TypeScript';
+    skillInput.addEventListener('input', (event) => {
+      state.values.skillName = event.target.value;
     });
-    managerSelect.addEventListener('change', (event) => {
-      state.values.managerId = event.target.value;
-    });
-    form.append(createField('Reporting Manager', managerSelect));
-
-    const skillSelect = document.createElement('select');
-    skillSelect.name = 'skill';
-    SKILL_CATALOG.forEach((skill) => {
-      const option = document.createElement('option');
-      option.value = String(skill.skillId);
-      option.textContent = `${skill.skillName} (${skill.category})`;
-      option.selected = String(skill.skillId) === state.values.skillId;
-      skillSelect.append(option);
-    });
-    skillSelect.addEventListener('change', (event) => {
-      state.values.skillId = event.target.value;
-    });
-    form.append(createField('Skill Name', skillSelect));
+    form.append(createField('Skill Name', skillInput));
 
     const experienceInput = document.createElement('input');
     experienceInput.type = 'number';
@@ -297,17 +267,17 @@ export default function decorate(block) {
         render();
       }
     });
-    form.append(createField('Certification?', certificationGroup));
+    form.append(createField('Has user completed certification?', certificationGroup));
 
     if (state.values.certified === 'yes') {
       const fileInput = document.createElement('input');
       fileInput.type = 'file';
-      fileInput.accept = 'image/png,image/jpeg,image/webp';
+      fileInput.accept = 'image/png';
       fileInput.addEventListener('change', (event) => {
         const [file] = event.target.files;
         state.values.certificateFile = file || null;
       });
-      form.append(createField('Upload Certificate', fileInput));
+      form.append(createField('Upload Certificate (PNG, max 50 KB)', fileInput));
     }
 
     const footer = createElement('div', 'entry-form__actions');
@@ -328,11 +298,11 @@ export default function decorate(block) {
 
     [
       ['Employee ID', preview.employeeId],
-      ['Reporting Manager', preview.manager.name],
-      ['Skill', preview.skill.skillName],
-      ['Category', preview.skill.category],
+      ['Skill', preview.skillName],
+      ['Skill Category (provisional)', preview.skillCategory],
+      ['Skill Adoption (provisional)', `${preview.skillSnapshot.adoptionRate}% of ${preview.skillSnapshot.totalEmployees} employees`],
       ['Experience', `${preview.experienceMonths} months`],
-      ['Derived Level', `${preview.level.level} - ${preview.level.label}`],
+      ['Derived Level', `${preview.level.level} — ${preview.level.label}`],
       ['Certified', preview.certified ? 'Yes' : 'No'],
     ].forEach(([labelText, value]) => {
       const row = createElement('div', 'entry-form__summary-row');
@@ -383,8 +353,8 @@ export default function decorate(block) {
     success.append(createElement('h3', 'entry-form__preview-heading', 'Submission complete'));
     success.append(createElement(
       'p',
-      'entry-form__intro',
-      'The employee self-entry flow is now wired for preview, payload generation, and success handling.',
+      '',
+      'Your skill has been recorded. You can submit another skill using the button below.',
     ));
 
     const actions = createElement('div', 'entry-form__actions');
@@ -394,6 +364,7 @@ export default function decorate(block) {
       state.mode = 'form';
       state.message = '';
       state.messageType = '';
+      state.values.skillName = '';
       state.values.experienceMonths = '';
       state.values.certified = 'no';
       state.values.certificateFile = null;
@@ -408,21 +379,26 @@ export default function decorate(block) {
   render = function renderEntryForm() {
     block.textContent = '';
     const wrapper = createElement('div', 'entry-form__wrapper');
+
+    const header = createElement('div', 'entry-form__header');
+    const accent = createElement('span', 'entry-form__heading-accent');
     const heading = createElement('h2', 'entry-form__heading', config.heading || 'Skill Submission');
     const meta = createElement('p', 'entry-form__meta', `Employee ID: ${state.values.employeeId}`);
+    header.append(accent, heading, meta);
+    wrapper.append(header);
 
-    wrapper.append(heading, meta);
     renderMessage(wrapper);
 
+    const body = createElement('div', 'entry-form__body');
     if (state.mode === 'preview') {
-      renderPreview(wrapper);
+      renderPreview(body);
     } else if (state.mode === 'success') {
-      renderSuccess(wrapper);
+      renderSuccess(body);
     } else {
-      renderForm(wrapper);
+      renderForm(body);
     }
+    wrapper.append(body);
 
-    block.textContent = '';
     block.append(wrapper);
   };
 
