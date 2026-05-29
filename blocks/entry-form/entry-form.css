@@ -93,7 +93,8 @@
 }
 
 .entry-form .entry-form__form {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 20px;
 }
 
@@ -177,6 +178,16 @@
     background-color 160ms ease;
 }
 
+.entry-form .entry-form__radio input[type='radio'] {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--entry-form-border);
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: border-color 160ms ease;
+}
+
 .entry-form .entry-form__radio:has(input:checked) {
   border-color: var(--entry-form-accent);
   background: #edf5ff;
@@ -184,8 +195,108 @@
   font-weight: 600;
 }
 
+.entry-form .entry-form__radio:has(input:checked) input[type='radio'] {
+  border-color: var(--entry-form-accent);
+  border-width: 5px;
+  background: #fff;
+}
+
 .entry-form .entry-form__radio:has(input:focus-visible) {
   box-shadow: var(--entry-form-focus);
+}
+
+/* ── Skill entries ── */
+.entry-form .entry-form__skill-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.entry-form .entry-form__skill-entry {
+  border: 1.5px solid var(--entry-form-border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.entry-form .entry-form__skill-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--entry-form-surface-alt);
+  border-bottom: 1px solid var(--entry-form-border);
+}
+
+.entry-form .entry-form__skill-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--entry-form-text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.entry-form .entry-form__remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--entry-form-border);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--entry-form-text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+
+.entry-form .entry-form__remove-btn:hover {
+  border-color: var(--entry-form-danger);
+  color: var(--entry-form-danger);
+}
+
+.entry-form .entry-form__skill-fields {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.entry-form .entry-form__field--full {
+  grid-column: 1 / -1;
+}
+
+/* ── Form footer ── */
+.entry-form .entry-form__form-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.entry-form .entry-form__button--ghost {
+  border-color: var(--entry-form-border);
+  background: transparent;
+  color: var(--entry-form-accent);
+  font-weight: 700;
+}
+
+.entry-form .entry-form__button--ghost:hover {
+  border-color: var(--entry-form-accent);
+  background: #edf5ff;
+}
+
+/* ── Preview skill cards ── */
+.entry-form .entry-form__preview-skill {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--entry-form-border);
+  border-radius: 14px;
+  background: var(--entry-form-surface-alt);
 }
 
 /* ── Actions ── */
@@ -324,14 +435,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  /* Skill Name and Experience side by side, rest full width */
-  .entry-form .entry-form__form .entry-form__field:nth-child(1),
-  .entry-form .entry-form__form .entry-form__field:nth-child(2) {
-    grid-column: span 1;
-  }
-
-  .entry-form .entry-form__form .entry-form__field:nth-child(n + 3),
-  .entry-form .entry-form__form .entry-form__actions {
-    grid-column: span 2;
+  .entry-form .entry-form__skill-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

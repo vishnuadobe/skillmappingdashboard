@@ -12,37 +12,23 @@ import {
 function readBlockConfig(block) {
   return [...block.children].reduce((config, row) => {
     const cells = [...row.children];
-    if (cells.length < 2) {
-      return config;
-    }
-
+    if (cells.length < 2) return config;
     const key = cells[0].textContent.trim().toLowerCase();
     const value = cells[1].textContent.trim();
-
-    if (key) {
-      config[key] = value;
-    }
-
+    if (key) config[key] = value;
     return config;
   }, {});
 }
 
 function createElement(tag, className, text) {
-  const element = document.createElement(tag);
-  if (className) {
-    element.className = className;
-  }
-  if (text) {
-    element.textContent = text;
-  }
-  return element;
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (text) el.textContent = text;
+  return el;
 }
 
 function toBoolean(value, defaultValue = false) {
-  if (!value) {
-    return defaultValue;
-  }
-
+  if (!value) return defaultValue;
   return value.toLowerCase() === 'true';
 }
 
@@ -55,9 +41,18 @@ function readFileAsDataUri(file) {
   });
 }
 
-function createField(labelText, control) {
-  const field = createElement('label', 'entry-form__field');
-  const label = createElement('span', 'entry-form__label', labelText);
+let fieldIdCounter = 0;
+
+function createField(labelText, control, fullWidth = false) {
+  const field = createElement('div', `entry-form__field${fullWidth ? ' entry-form__field--full' : ''}`);
+  const label = createElement('label', 'entry-form__label', labelText);
+  if (control.id || control.tagName === 'INPUT' || control.tagName === 'SELECT') {
+    if (!control.id) {
+      fieldIdCounter += 1;
+      control.id = `ef-field-${fieldIdCounter}`;
+    }
+    label.htmlFor = control.id;
+  }
   field.append(label, control);
   return field;
 }
@@ -71,21 +66,72 @@ function createRadioGroup(name, selectedValue) {
     input.name = name;
     input.value = value;
     input.checked = value === selectedValue;
-    const text = createElement('span', '', value === 'yes' ? 'Yes' : 'No');
-    option.append(input, text);
+    option.append(input, createElement('span', '', value === 'yes' ? 'Yes' : 'No'));
     wrapper.append(option);
   });
   return wrapper;
 }
 
-function downloadBlob(filename, content, type) {
-  const blob = new Blob([content], { type });
-  const href = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = href;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(href);
+function createEmptySkill() {
+  return {
+    skillName: '',
+    experienceMonths: '',
+    certified: 'no',
+    certificateFile: null,
+    certificateDataUri: '',
+  };
+}
+
+function openPrintPreview(preview) {
+  const skillRows = preview.skills.map((skill, i) => `
+    <div class="skill">
+      ${preview.skills.length > 1 ? `<h3>Skill ${i + 1}</h3>` : ''}
+      <table>
+        <tr><td>Skill</td><td>${skill.skillName}</td></tr>
+        <tr><td>Experience</td><td>${skill.experienceMonths} months</td></tr>
+        <tr><td>Proficiency Level</td><td>${skill.level.level} — ${skill.level.label}</td></tr>
+        <tr><td>Skill Category</td><td>${skill.skillCategory}</td></tr>
+        <tr><td>Certified</td><td>${skill.certified ? 'Yes' : 'No'}</td></tr>
+      </table>
+      ${skill.certificateDataUri ? `<img src="${skill.certificateDataUri}" alt="Certificate" />` : ''}
+    </div>
+  `).join('');
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Skill Submission — ${preview.employeeId}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1f2937; padding: 48px; max-width: 700px; margin: 0 auto; }
+    .header { border-bottom: 3px solid #1473e6; padding-bottom: 20px; margin-bottom: 32px; }
+    .header h1 { font-size: 1.6rem; font-weight: 800; margin-bottom: 6px; }
+    .header p { color: #637083; font-size: 0.9rem; }
+    .skill { margin-bottom: 28px; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px; }
+    .skill h3 { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #637083; margin-bottom: 14px; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; font-size: 0.9rem; }
+    td:first-child { font-weight: 600; width: 40%; color: #374151; }
+    td:last-child { color: #4b5563; }
+    tr:last-child td { border-bottom: 0; }
+    img { margin-top: 16px; max-width: 240px; border-radius: 8px; border: 1px solid #e5e7eb; }
+    .footer { margin-top: 40px; font-size: 0.8rem; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 16px; }
+    @media print { body { padding: 24px; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Skill Submission</h1>
+    <p>Employee ID: ${preview.employeeId} &nbsp;·&nbsp; ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+  </div>
+  ${skillRows}
+  <div class="footer">Generated by Skill Navigator &nbsp;·&nbsp; Adobe</div>
+  <script>window.onload = () => { window.print(); }<\/script>
+</body>
+</html>`);
+  win.document.close();
 }
 
 export default function decorate(block) {
@@ -98,83 +144,86 @@ export default function decorate(block) {
     simulateSubmit: toBoolean(config['simulate-submit'], true),
     values: {
       employeeId: config['employee-id'] || 'robinvarshn',
-      skillName: config['skill-name'] || '',
-      experienceMonths: '',
-      certified: 'no',
-      certificateFile: null,
-      certificateDataUri: '',
+      skills: [createEmptySkill()],
     },
   };
   let render;
 
   function getPreviewModel() {
-    const skillName = state.values.skillName.trim();
-    const catalogSkill = getSkillByName(skillName);
-    const skillSnapshot = getSkillAdoptionSnapshot(skillName);
-    const level = getLevelFromExperienceMonths(state.values.experienceMonths);
-
     return {
       employeeId: state.values.employeeId,
-      skillName,
-      skillId: catalogSkill?.skillId,
-      skillCategory: getCategoryFromAdoptionRate(skillSnapshot.adoptionRate),
-      skillSnapshot,
-      experienceMonths: Number(state.values.experienceMonths),
-      certified: state.values.certified === 'yes',
-      level,
-      certificateDataUri: state.values.certificateDataUri,
-      payload: buildSkillsPayload(state.values.employeeId, [{
-        skillId: catalogSkill?.skillId,
-        skillName,
-        proficiencyLevel: level?.level || 1,
-      }]),
+      skills: state.values.skills.map((skill) => {
+        const skillName = skill.skillName.trim();
+        const catalogSkill = getSkillByName(skillName);
+        const skillSnapshot = getSkillAdoptionSnapshot(skillName);
+        const level = getLevelFromExperienceMonths(skill.experienceMonths);
+        return {
+          skillName,
+          skillId: catalogSkill?.skillId,
+          skillCategory: getCategoryFromAdoptionRate(skillSnapshot.adoptionRate),
+          skillSnapshot,
+          experienceMonths: Number(skill.experienceMonths),
+          certified: skill.certified === 'yes',
+          level,
+          certificateDataUri: skill.certificateDataUri,
+        };
+      }),
+      payload: buildSkillsPayload(
+        state.values.employeeId,
+        state.values.skills.map((skill) => {
+          const skillName = skill.skillName.trim();
+          const catalogSkill = getSkillByName(skillName);
+          const level = getLevelFromExperienceMonths(skill.experienceMonths);
+          return {
+            skillId: catalogSkill?.skillId,
+            skillName,
+            proficiencyLevel: level?.level || 1,
+          };
+        }),
+      ),
     };
   }
 
   async function validateForm() {
     const errors = [];
-    const months = Number(state.values.experienceMonths);
 
-    if (!state.values.skillName.trim()) {
-      errors.push('Skill name is required.');
-    }
+    state.values.skills.forEach((skill, i) => {
+      const prefix = state.values.skills.length > 1 ? `Skill ${i + 1}: ` : '';
+      const months = Number(skill.experienceMonths);
 
-    if (!Number.isFinite(months) || months < 1 || months > 1000) {
-      errors.push('Experience in months must be between 1 and 1000.');
-    }
-
-    if (!getLevelFromExperienceMonths(months)) {
-      errors.push('A valid proficiency level could not be derived from experience.');
-    }
-
-    if (state.values.certified === 'yes') {
-      const file = state.values.certificateFile;
-      if (!file) {
-        errors.push('Certificate upload is required when certification is Yes.');
-      } else {
-        if (file.size > 50 * 1024) {
-          errors.push('Certificate file must be 50 KB or smaller.');
-        }
-        if (file.type !== 'image/png') {
-          errors.push('Certificate file must be a PNG image.');
+      if (!skill.skillName.trim()) {
+        errors.push(`${prefix}Skill name is required.`);
+      }
+      if (!Number.isFinite(months) || months < 1 || months > 1000) {
+        errors.push(`${prefix}Experience must be between 1 and 1000 months.`);
+      }
+      if (skill.skillName.trim() && !getLevelFromExperienceMonths(months)) {
+        errors.push(`${prefix}Could not derive a proficiency level.`);
+      }
+      if (skill.certified === 'yes') {
+        const { certificateFile: file } = skill;
+        if (!file) {
+          errors.push(`${prefix}Certificate upload is required.`);
+        } else {
+          if (file.size > 50 * 1024) errors.push(`${prefix}Certificate must be 50 KB or smaller.`);
+          if (file.type !== 'image/png') errors.push(`${prefix}Certificate must be a PNG image.`);
         }
       }
-    }
+    });
 
-    if (errors.length > 0) {
-      throw new Error(errors.join(' '));
-    }
+    if (errors.length > 0) throw new Error(errors.join(' '));
 
-    state.values.certificateDataUri = state.values.certified === 'yes'
-      ? await readFileAsDataUri(state.values.certificateFile)
-      : '';
+    await Promise.all(state.values.skills.map(async (skill) => {
+      skill.certificateDataUri = skill.certified === 'yes'
+        ? await readFileAsDataUri(skill.certificateFile)
+        : '';
+    }));
   }
 
   async function handlePreview(event) {
     event.preventDefault();
     state.message = '';
     state.messageType = '';
-
     try {
       await validateForm();
       state.mode = 'preview';
@@ -182,7 +231,6 @@ export default function decorate(block) {
       state.message = error.message;
       state.messageType = 'error';
     }
-
     render();
   }
 
@@ -197,13 +245,10 @@ export default function decorate(block) {
       if (!state.simulateSubmit) {
         await submitEmployeeSkills(preview.employeeId, preview.payload);
       }
-
       state.mode = 'success';
-      state.message = state.simulateSubmit
-        ? 'Submission saved (simulated).'
-        : 'Submission saved successfully.';
+      state.message = state.simulateSubmit ? 'Submission saved (simulated).' : 'Submission saved successfully.';
       state.messageType = 'success';
-    } catch (error) {
+    } catch {
       state.message = 'Submission failed. Please try again once the API is available.';
       state.messageType = 'error';
     } finally {
@@ -212,80 +257,100 @@ export default function decorate(block) {
     }
   }
 
-  function handleExportPreview() {
-    const preview = getPreviewModel();
-    downloadBlob(
-      `${preview.employeeId}-skill-preview.json`,
-      JSON.stringify(preview, null, 2),
-      'application/json',
-    );
-  }
-
   function renderMessage(container) {
-    if (!state.message) {
-      return;
-    }
-
-    const message = createElement(
+    if (!state.message) return;
+    container.append(createElement(
       'p',
       `entry-form__message entry-form__message--${state.messageType || 'info'}`,
       state.message,
-    );
-    container.append(message);
+    ));
+  }
+
+  function renderSkillEntry(skillIndex) {
+    const skill = state.values.skills[skillIndex];
+    const canRemove = state.values.skills.length > 1;
+
+    const entry = createElement('div', 'entry-form__skill-entry');
+
+    const entryHeader = createElement('div', 'entry-form__skill-header');
+    entryHeader.append(createElement('span', 'entry-form__skill-badge', `Skill ${skillIndex + 1}`));
+
+    if (canRemove) {
+      const removeBtn = createElement('button', 'entry-form__remove-btn', '×');
+      removeBtn.type = 'button';
+      removeBtn.setAttribute('aria-label', `Remove skill ${skillIndex + 1}`);
+      removeBtn.addEventListener('click', () => {
+        state.values.skills.splice(skillIndex, 1);
+        render();
+      });
+      entryHeader.append(removeBtn);
+    }
+    entry.append(entryHeader);
+
+    const fields = createElement('div', 'entry-form__skill-fields');
+
+    const skillInput = document.createElement('input');
+    skillInput.type = 'text';
+    skillInput.value = skill.skillName;
+    skillInput.placeholder = 'e.g. Adobe EDS, TypeScript';
+    skillInput.addEventListener('input', (e) => { skill.skillName = e.target.value; });
+    fields.append(createField('Skill Name', skillInput));
+
+    const expInput = document.createElement('input');
+    expInput.type = 'number';
+    expInput.min = '1';
+    expInput.max = '1000';
+    expInput.value = skill.experienceMonths;
+    expInput.placeholder = 'e.g. 12';
+    expInput.addEventListener('input', (e) => { skill.experienceMonths = e.target.value; });
+    fields.append(createField('Experience in Months', expInput));
+
+    const certGroup = createRadioGroup(`certified-${skillIndex}`, skill.certified);
+    certGroup.addEventListener('change', (e) => {
+      skill.certified = e.target.value;
+      if (skill.certified !== 'yes') {
+        skill.certificateFile = null;
+        skill.certificateDataUri = '';
+      }
+      render();
+    });
+    fields.append(createField('Completed certification?', certGroup, true));
+
+    if (skill.certified === 'yes') {
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/png';
+      fileInput.addEventListener('change', (e) => {
+        skill.certificateFile = e.target.files[0] || null;
+      });
+      fields.append(createField('Upload Certificate (PNG, max 50 KB)', fileInput, true));
+    }
+
+    entry.append(fields);
+    return entry;
   }
 
   function renderForm(wrapper) {
     const form = createElement('form', 'entry-form__form');
 
-    const skillInput = document.createElement('input');
-    skillInput.type = 'text';
-    skillInput.name = 'skill-name';
-    skillInput.value = state.values.skillName;
-    skillInput.placeholder = 'e.g. Adobe EDS, TypeScript';
-    skillInput.addEventListener('input', (event) => {
-      state.values.skillName = event.target.value;
+    const entries = createElement('div', 'entry-form__skill-entries');
+    state.values.skills.forEach((_, i) => entries.append(renderSkillEntry(i)));
+    form.append(entries);
+
+    const footer = createElement('div', 'entry-form__form-footer');
+
+    const addBtn = createElement('button', 'entry-form__button entry-form__button--ghost', '+ Add another skill');
+    addBtn.type = 'button';
+    addBtn.addEventListener('click', () => {
+      state.values.skills.push(createEmptySkill());
+      render();
     });
-    form.append(createField('Skill Name', skillInput));
 
-    const experienceInput = document.createElement('input');
-    experienceInput.type = 'number';
-    experienceInput.min = '1';
-    experienceInput.max = '1000';
-    experienceInput.value = state.values.experienceMonths;
-    experienceInput.placeholder = 'e.g. 12';
-    experienceInput.addEventListener('input', (event) => {
-      state.values.experienceMonths = event.target.value;
-    });
-    form.append(createField('Experience in Months', experienceInput));
+    const previewBtn = createElement('button', 'entry-form__button entry-form__button--primary', 'Preview Submission');
+    previewBtn.type = 'submit';
 
-    const certificationGroup = createRadioGroup('certified', state.values.certified);
-    certificationGroup.addEventListener('change', (event) => {
-      state.values.certified = event.target.value;
-      if (state.values.certified !== 'yes') {
-        state.values.certificateFile = null;
-        state.values.certificateDataUri = '';
-        render();
-      }
-    });
-    form.append(createField('Has user completed certification?', certificationGroup));
-
-    if (state.values.certified === 'yes') {
-      const fileInput = document.createElement('input');
-      fileInput.type = 'file';
-      fileInput.accept = 'image/png';
-      fileInput.addEventListener('change', (event) => {
-        const [file] = event.target.files;
-        state.values.certificateFile = file || null;
-      });
-      form.append(createField('Upload Certificate (PNG, max 50 KB)', fileInput));
-    }
-
-    const footer = createElement('div', 'entry-form__actions');
-    const previewButton = createElement('button', 'entry-form__button entry-form__button--primary', 'Preview Submission');
-    previewButton.type = 'submit';
-    footer.append(previewButton);
+    footer.append(addBtn, previewBtn);
     form.append(footer);
-
     form.addEventListener('submit', handlePreview);
     wrapper.append(form);
   }
@@ -293,57 +358,58 @@ export default function decorate(block) {
   function renderPreview(wrapper) {
     const preview = getPreviewModel();
     const card = createElement('section', 'entry-form__preview');
-    const heading = createElement('h3', 'entry-form__preview-heading', 'Preview your submission');
-    const list = createElement('dl', 'entry-form__summary');
+    card.append(createElement('h3', 'entry-form__preview-heading', 'Preview your submission'));
 
-    [
-      ['Employee ID', preview.employeeId],
-      ['Skill', preview.skillName],
-      ['Skill Category (provisional)', preview.skillCategory],
-      ['Skill Adoption (provisional)', `${preview.skillSnapshot.adoptionRate}% of ${preview.skillSnapshot.totalEmployees} employees`],
-      ['Experience', `${preview.experienceMonths} months`],
-      ['Derived Level', `${preview.level.level} — ${preview.level.label}`],
-      ['Certified', preview.certified ? 'Yes' : 'No'],
-    ].forEach(([labelText, value]) => {
-      const row = createElement('div', 'entry-form__summary-row');
-      row.append(createElement('dt', 'entry-form__summary-label', labelText));
-      row.append(createElement('dd', 'entry-form__summary-value', value));
-      list.append(row);
+    preview.skills.forEach((skill, i) => {
+      const skillCard = createElement('div', 'entry-form__preview-skill');
+
+      if (preview.skills.length > 1) {
+        skillCard.append(createElement('p', 'entry-form__skill-badge', `Skill ${i + 1}`));
+      }
+
+      const list = createElement('dl', 'entry-form__summary');
+      [
+        ['Skill', skill.skillName],
+        ['Skill Category (provisional)', skill.skillCategory],
+        ['Skill Adoption', `${skill.skillSnapshot.adoptionRate}% of ${skill.skillSnapshot.totalEmployees} employees`],
+        ['Experience', `${skill.experienceMonths} months`],
+        ['Derived Level', `${skill.level.level} — ${skill.level.label}`],
+        ['Certified', skill.certified ? 'Yes' : 'No'],
+      ].forEach(([labelText, value]) => {
+        const row = createElement('div', 'entry-form__summary-row');
+        row.append(createElement('dt', 'entry-form__summary-label', labelText));
+        row.append(createElement('dd', 'entry-form__summary-value', value));
+        list.append(row);
+      });
+      skillCard.append(list);
+
+      if (skill.certificateDataUri) {
+        const img = document.createElement('img');
+        img.className = 'entry-form__certificate-preview';
+        img.src = skill.certificateDataUri;
+        img.alt = 'Uploaded certificate';
+        skillCard.append(img);
+      }
+
+      card.append(skillCard);
     });
-
-    card.append(heading, list);
-
-    if (preview.certificateDataUri) {
-      const image = document.createElement('img');
-      image.className = 'entry-form__certificate-preview';
-      image.src = preview.certificateDataUri;
-      image.alt = 'Uploaded certificate preview';
-      card.append(image);
-    }
 
     const actions = createElement('div', 'entry-form__actions');
 
-    const backButton = createElement('button', 'entry-form__button', 'Back to form');
-    backButton.type = 'button';
-    backButton.addEventListener('click', () => {
-      state.mode = 'form';
-      render();
-    });
+    const backBtn = createElement('button', 'entry-form__button', 'Back to form');
+    backBtn.type = 'button';
+    backBtn.addEventListener('click', () => { state.mode = 'form'; render(); });
 
-    const exportButton = createElement('button', 'entry-form__button', 'Export Preview');
-    exportButton.type = 'button';
-    exportButton.addEventListener('click', handleExportPreview);
+    const confirmBtn = createElement('button', 'entry-form__button entry-form__button--primary', state.busy ? 'Saving...' : 'Confirm and Submit');
+    confirmBtn.type = 'button';
+    confirmBtn.disabled = state.busy;
+    confirmBtn.addEventListener('click', handleConfirm);
 
-    const confirmButton = createElement(
-      'button',
-      'entry-form__button entry-form__button--primary',
-      state.busy ? 'Saving...' : 'Confirm and Submit',
-    );
-    confirmButton.type = 'button';
-    confirmButton.disabled = state.busy;
-    confirmButton.addEventListener('click', handleConfirm);
+    const exportBtn = createElement('button', 'entry-form__button', 'Save as PDF');
+    exportBtn.type = 'button';
+    exportBtn.addEventListener('click', () => openPrintPreview(preview));
 
-    actions.append(backButton, exportButton, confirmButton);
+    actions.append(backBtn, exportBtn, confirmBtn);
     card.append(actions);
     wrapper.append(card);
   }
@@ -351,27 +417,19 @@ export default function decorate(block) {
   function renderSuccess(wrapper) {
     const success = createElement('section', 'entry-form__success');
     success.append(createElement('h3', 'entry-form__preview-heading', 'Submission complete'));
-    success.append(createElement(
-      'p',
-      '',
-      'Your skill has been recorded. You can submit another skill using the button below.',
-    ));
+    success.append(createElement('p', '', 'Your skills have been recorded. You can submit more skills using the button below.'));
 
     const actions = createElement('div', 'entry-form__actions');
-    const resetButton = createElement('button', 'entry-form__button entry-form__button--primary', 'Submit another skill');
-    resetButton.type = 'button';
-    resetButton.addEventListener('click', () => {
+    const resetBtn = createElement('button', 'entry-form__button entry-form__button--primary', 'Submit more skills');
+    resetBtn.type = 'button';
+    resetBtn.addEventListener('click', () => {
       state.mode = 'form';
       state.message = '';
       state.messageType = '';
-      state.values.skillName = '';
-      state.values.experienceMonths = '';
-      state.values.certified = 'no';
-      state.values.certificateFile = null;
-      state.values.certificateDataUri = '';
+      state.values.skills = [createEmptySkill()];
       render();
     });
-    actions.append(resetButton);
+    actions.append(resetBtn);
     success.append(actions);
     wrapper.append(success);
   }
@@ -381,10 +439,11 @@ export default function decorate(block) {
     const wrapper = createElement('div', 'entry-form__wrapper');
 
     const header = createElement('div', 'entry-form__header');
-    const accent = createElement('span', 'entry-form__heading-accent');
-    const heading = createElement('h2', 'entry-form__heading', config.heading || 'Skill Submission');
-    const meta = createElement('p', 'entry-form__meta', `Employee ID: ${state.values.employeeId}`);
-    header.append(accent, heading, meta);
+    header.append(
+      createElement('span', 'entry-form__heading-accent'),
+      createElement('h2', 'entry-form__heading', config.heading || 'Skill Submission'),
+      createElement('p', 'entry-form__meta', `Employee ID: ${state.values.employeeId}`),
+    );
     wrapper.append(header);
 
     renderMessage(wrapper);
@@ -398,7 +457,6 @@ export default function decorate(block) {
       renderForm(body);
     }
     wrapper.append(body);
-
     block.append(wrapper);
   };
 
