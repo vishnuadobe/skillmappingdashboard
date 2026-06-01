@@ -23,7 +23,8 @@
 - POSTs directly to the confirmed backend endpoint via `submitSkillReport()`
 - `simulate-submit` flag removed — always hits real API
 - Proficiency level derived from experience months via `/skill-levels.json` (authorable)
-- Logout button in header — calls `logout()` from `auth.js`
+- Logout button to be added in the site header (removed from block)
+- Certificate upload "Choose File" button styled via `::file-selector-button` to match form design
 - `email` and `name` in POST payload currently empty strings — will be populated from IndexDB once SSO is wired
 
 ### `report-table` — `/employee-details`

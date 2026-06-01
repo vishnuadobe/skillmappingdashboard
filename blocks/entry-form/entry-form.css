@@ -143,8 +143,29 @@
 }
 
 .entry-form input[type='file'] {
-  padding: 14px 18px;
+  padding: 8px 8px 8px 12px;
   background: #fbfdff;
+  cursor: pointer;
+}
+
+.entry-form input[type='file']::file-selector-button {
+  height: 36px;
+  padding: 0 16px;
+  margin-right: 14px;
+  border: 1.5px solid var(--entry-form-accent);
+  border-radius: 999px;
+  background: var(--entry-form-accent);
+  color: #fff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.entry-form input[type='file']::file-selector-button:hover {
+  background: var(--entry-form-accent-strong);
+  border-color: var(--entry-form-accent-strong);
 }
 
 .entry-form input[type='text']:focus-visible,

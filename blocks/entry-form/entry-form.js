@@ -3,7 +3,6 @@ import {
   getLevelFromExperienceMonths,
   submitSkillReport,
 } from '../../scripts/api.js';
-import logout from '../../scripts/auth.js';
 import {
   getCategoryFromAdoptionRate,
   getSkillAdoptionSnapshot,
@@ -441,14 +440,10 @@ export default function decorate(block) {
     const wrapper = createElement('div', 'entry-form__wrapper');
 
     const header = createElement('div', 'entry-form__header');
-    const logoutBtn = createElement('button', 'entry-form__logout', 'Logout');
-    logoutBtn.type = 'button';
-    logoutBtn.addEventListener('click', logout);
     header.append(
       createElement('span', 'entry-form__heading-accent'),
       createElement('h2', 'entry-form__heading', config.heading || 'Skill Submission'),
       createElement('p', 'entry-form__meta', `Employee ID: ${state.values.employeeId}`),
-      logoutBtn,
     );
     wrapper.append(header);
 

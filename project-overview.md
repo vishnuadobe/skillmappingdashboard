@@ -54,7 +54,7 @@ Both GET and POST use the same URL, defined in `scripts/api.js`.
 - PDF export via browser print
 - Proficiency level derived from authorable `/skill-levels.json`
 - POSTs directly to backend via `submitSkillReport()`
-- Logout button → `logout()` in `auth.js`
+- Logout button to be added in the site header (not in the block)
 - `email` and `name` in POST payload currently empty — populated once SSO is wired
 
 ### `report-table` — `/employee-details`
