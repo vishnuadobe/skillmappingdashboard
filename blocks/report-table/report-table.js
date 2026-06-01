@@ -1,9 +1,5 @@
-import { getLevelFromExperienceMonths } from '../../scripts/api.js';
-import {
-  MANAGERS,
-  MOCK_SUBMISSIONS,
-  getSkillById,
-} from '../../scripts/skill-data.js';
+import { getSkillReport } from '../../scripts/api.js';
+import logout from '../../scripts/auth.js';
 
 function readBlockConfig(block) {
   return [...block.children].reduce((config, row) => {
@@ -23,29 +19,38 @@ function createElement(tag, className, text) {
   return el;
 }
 
-function buildMatrix() {
-  const skillIdOrder = [...new Set(MOCK_SUBMISSIONS.map((e) => e.skillId))];
-  const skills = skillIdOrder.map((id) => getSkillById(id)).filter(Boolean);
-
-  const employeeMap = {};
-  MOCK_SUBMISSIONS.forEach((entry) => {
-    if (!employeeMap[entry.employeeId]) {
-      employeeMap[entry.employeeId] = { id: entry.employeeId, name: entry.employeeName, skills: {} };
-    }
-    const level = getLevelFromExperienceMonths(entry.experienceMonths);
-    employeeMap[entry.employeeId].skills[entry.skillId] = { level, certified: entry.certified };
+function buildMatrix(employees) {
+  const skillNames = [...new Set(employees.flatMap((emp) => emp.skills.map((s) => s.name)))];
+  const rows = employees.map((emp) => {
+    const skillMap = {};
+    emp.skills.forEach((s) => { skillMap[s.name] = s; });
+    return { name: emp.name, email: emp.email, skillMap };
   });
-
-  return { skills, employees: Object.values(employeeMap) };
+  return { skillNames, rows };
 }
 
-function toCsv(matrix) {
-  const header = ['Employee', ...matrix.skills.map((s) => s.skillName)];
-  const rows = matrix.employees.map((emp) => [
-    emp.name,
-    ...matrix.skills.map((s) => emp.skills[s.skillId]?.level?.label || '—'),
+function getLevelLabel(proficiencyLevels, level) {
+  const match = proficiencyLevels.find((entry) => entry.level === level);
+  return match ? match.label : '—';
+}
+
+function createLevelBadge(skill, proficiencyLevels) {
+  if (!skill) return createElement('span', 'report-table__badge report-table__badge--none', '—');
+  const label = getLevelLabel(proficiencyLevels, skill.proficiencyLevel);
+  return createElement('span', `report-table__badge report-table__badge--l${skill.proficiencyLevel}`, label);
+}
+
+function toCsv(skillNames, rows, proficiencyLevels) {
+  const header = ['Employee', 'Email', ...skillNames];
+  const dataRows = rows.map((row) => [
+    row.name,
+    row.email,
+    ...skillNames.map((name) => {
+      const skill = row.skillMap[name];
+      return skill ? getLevelLabel(proficiencyLevels, skill.proficiencyLevel) : '—';
+    }),
   ]);
-  return [header, ...rows]
+  return [header, ...dataRows]
     .map((row) => row.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(','))
     .join('\n');
 }
@@ -60,82 +65,61 @@ function downloadCsv(filename, content) {
   URL.revokeObjectURL(href);
 }
 
-function createLevelBadge(levelObj) {
-  if (!levelObj) {
-    const badge = createElement('span', 'report-table__badge report-table__badge--none', '—');
-    return badge;
-  }
-  const badge = createElement('span', `report-table__badge report-table__badge--l${levelObj.level}`, levelObj.label);
-  return badge;
-}
-
-export default function decorate(block) {
-  const config = readBlockConfig(block);
-  const manager = MANAGERS[0];
-  const matrix = buildMatrix();
+function renderTable(block, config, data) {
+  const { employees, metadata: { proficiencyLevels } } = data;
+  const { skillNames, rows } = buildMatrix(employees);
 
   block.textContent = '';
   const wrapper = createElement('div', 'report-table__wrapper');
 
-  // Header
   const header = createElement('div', 'report-table__header');
   header.append(
     createElement('span', 'report-table__heading-accent'),
-    createElement('h2', 'report-table__heading', config.heading || `Welcome, ${manager.name}`),
+    createElement('h2', 'report-table__heading', config.heading || 'Manager Skill Report'),
     createElement('p', 'report-table__meta', 'Manager View'),
   );
+
+  const logoutBtn = createElement('button', 'report-table__logout', 'Logout');
+  logoutBtn.type = 'button';
+  logoutBtn.addEventListener('click', logout);
+  header.append(logoutBtn);
+
   wrapper.append(header);
 
-  // Body
   const body = createElement('div', 'report-table__body');
 
-  // Legend + export row
   const toolbar = createElement('div', 'report-table__toolbar');
-
   const legend = createElement('div', 'report-table__legend');
-  [
-    ['l1', 'Foundational'],
-    ['l2', 'Developing'],
-    ['l3', 'Professional'],
-    ['l4', 'Expert'],
-    ['l5', 'Master'],
-  ].forEach(([mod, label]) => {
+  proficiencyLevels.forEach(({ level, label }) => {
     const item = createElement('span', 'report-table__legend-item');
-    item.append(createElement('span', `report-table__badge report-table__badge--${mod}`, label));
+    item.append(createElement('span', `report-table__badge report-table__badge--l${level}`, label));
     legend.append(item);
   });
   toolbar.append(legend);
 
   const exportBtn = createElement('button', 'report-table__button', 'Export CSV');
   exportBtn.type = 'button';
-  exportBtn.addEventListener('click', () => downloadCsv('skill-matrix.csv', toCsv(matrix)));
+  exportBtn.addEventListener('click', () => downloadCsv('skill-report.csv', toCsv(skillNames, rows, proficiencyLevels)));
   toolbar.append(exportBtn);
   body.append(toolbar);
 
-  // Table
   const tableWrapper = createElement('div', 'report-table__table-wrapper');
   const table = createElement('table', 'report-table__table');
 
-  // Head
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
   headerRow.append(createElement('th', 'report-table__col-employee', 'Employee'));
-  matrix.skills.forEach((skill) => {
-    const th = createElement('th', 'report-table__col-skill', skill.skillName);
-    headerRow.append(th);
-  });
+  skillNames.forEach((name) => headerRow.append(createElement('th', 'report-table__col-skill', name)));
   thead.append(headerRow);
   table.append(thead);
 
-  // Body
   const tbody = document.createElement('tbody');
-  matrix.employees.forEach((emp) => {
+  rows.forEach((row) => {
     const tr = document.createElement('tr');
-    tr.append(createElement('td', 'report-table__cell-employee', emp.name));
-    matrix.skills.forEach((skill) => {
-      const entry = emp.skills[skill.skillId];
+    tr.append(createElement('td', 'report-table__cell-employee', row.name));
+    skillNames.forEach((name) => {
       const td = document.createElement('td');
-      td.append(createLevelBadge(entry?.level));
+      td.append(createLevelBadge(row.skillMap[name], proficiencyLevels));
       tr.append(td);
     });
     tbody.append(tr);
@@ -146,4 +130,18 @@ export default function decorate(block) {
   body.append(tableWrapper);
   wrapper.append(body);
   block.append(wrapper);
+}
+
+export default async function decorate(block) {
+  const config = readBlockConfig(block);
+  block.textContent = '';
+  block.append(createElement('p', 'report-table__loading', 'Loading skill report…'));
+
+  try {
+    const data = await getSkillReport();
+    renderTable(block, config, data);
+  } catch {
+    block.textContent = '';
+    block.append(createElement('p', 'report-table__error', 'Failed to load skill report. Please try again.'));
+  }
 }

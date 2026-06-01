@@ -1,12 +1,6 @@
-const API_VERSION = '/api/v1';
+const SKILL_REPORT_URL = 'https://293924-uiprojectdashboard-stage.adobeio-static.net/api/v1/web/uiprojectdashboard/skillReport';
 
-const EXPERIENCE_LEVELS = [
-  { maxMonths: 5, level: 1, label: 'Foundational' },
-  { maxMonths: 10, level: 2, label: 'Developing' },
-  { maxMonths: 15, level: 3, label: 'Professional' },
-  { maxMonths: 20, level: 4, label: 'Expert' },
-  { maxMonths: Number.POSITIVE_INFINITY, level: 5, label: 'Master' },
-];
+let levelsCache = null;
 
 function ensureOk(response) {
   if (response.ok) {
@@ -31,42 +25,54 @@ async function requestJson(path, options = {}) {
   return response.json();
 }
 
-export function getLevelFromExperienceMonths(months) {
-  const normalizedMonths = Number(months);
-
-  if (!Number.isFinite(normalizedMonths) || normalizedMonths < 1) {
-    return null;
-  }
-
-  return EXPERIENCE_LEVELS.find((entry) => normalizedMonths <= entry.maxMonths) || null;
+async function fetchExperienceLevels() {
+  if (levelsCache) return levelsCache;
+  const { data } = await requestJson('/skill-levels.json');
+  levelsCache = data.map((row) => ({
+    maxMonths: Number(row['max-months']),
+    level: Number(row.level),
+    label: row.label,
+  }));
+  return levelsCache;
 }
 
-export function buildSkillsPayload(
-  employeeId,
-  skillEntries,
-  lastUpdated = new Date().toISOString(),
-) {
+export async function getLevelFromExperienceMonths(months) {
+  const normalizedMonths = Number(months);
+  if (!Number.isFinite(normalizedMonths) || normalizedMonths < 1) return null;
+  const levels = await fetchExperienceLevels();
+  return levels.find((entry) => normalizedMonths <= entry.maxMonths) || null;
+}
+
+export function buildSkillsPayload(employeeId, email, name, skillEntries) {
   return {
     employeeId,
-    lastUpdated,
-    skills: skillEntries.map((entry) => ({
-      ...(entry.skillId ? { skillId: entry.skillId } : {}),
-      ...(entry.skillName ? { skillName: entry.skillName } : {}),
-      proficiencyLevel: entry.proficiencyLevel,
-    })),
+    email,
+    name,
+    skills: skillEntries.map((entry) => {
+      const skill = {
+        name: entry.name,
+        expInMonths: entry.expInMonths,
+        proficiencyLevel: entry.proficiencyLevel,
+      };
+      if (entry.certification) {
+        skill.certification = {
+          name: entry.certification.name,
+          imageUrl: entry.certification.imageUrl,
+        };
+      }
+      return skill;
+    }),
   };
 }
 
-export async function getEmployeeSkills(managerId) {
-  return requestJson(`${API_VERSION}/managers/${encodeURIComponent(managerId)}/employees/skills`);
+export async function getSkillReport() {
+  return requestJson(SKILL_REPORT_URL);
 }
 
-export async function submitEmployeeSkills(managerId, payload) {
-  return requestJson(`${API_VERSION}/managers/${encodeURIComponent(managerId)}/employees/skills`, {
+export async function submitSkillReport(payload) {
+  return requestJson(SKILL_REPORT_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
 }
