@@ -1,125 +1,234 @@
 .report-table {
-  display: none;
-
   --report-table-border: #d8dee8;
+  --report-table-border-strong: #bfd3ee;
   --report-table-surface: #fff;
   --report-table-surface-alt: #f8fbff;
   --report-table-text: #1f2937;
   --report-table-text-muted: #637083;
   --report-table-accent: #1473e6;
-  --report-table-shadow: 0 16px 38px rgb(15 23 42 / 8%);
+  --report-table-accent-strong: #0d66d0;
+  --report-table-shadow: 0 24px 48px rgb(15 23 42 / 10%);
+  --report-table-focus: 0 0 0 3px rgb(20 115 230 / 12%);
 }
 
 .report-table .report-table__wrapper {
-  display: grid;
-  gap: 20px;
-  padding: 24px;
   border: 1px solid var(--report-table-border);
   border-radius: 24px;
-  background: linear-gradient(180deg, #fff 0%, #f9fbff 100%);
+  background: var(--report-table-surface);
   box-shadow: var(--report-table-shadow);
+  overflow: hidden;
 }
 
-.report-table .report-table__heading,
-.report-table .report-table__count {
-  margin: 0;
+/* ── Header ── */
+.report-table .report-table__header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 32px 28px 28px;
+  background: linear-gradient(135deg, #f0f6ff 0%, #fafcff 100%);
+  border-bottom: 1px solid var(--report-table-border);
+}
+
+.report-table .report-table__heading-accent {
+  display: block;
+  width: 40px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--report-table-accent);
 }
 
 .report-table .report-table__heading {
+  margin: 0;
   color: var(--report-table-text);
-  font-size: 1.85rem;
-  line-height: 1.15;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
-.report-table .report-table__meta,
-.report-table .report-table__count {
+.report-table .report-table__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin: 0;
+  padding: 5px 12px;
+  border: 1px solid var(--report-table-border-strong);
+  border-radius: 999px;
+  background: #fff;
   color: var(--report-table-text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
-.report-table .report-table__controls {
+.report-table .report-table__meta::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--report-table-accent);
+  flex-shrink: 0;
+}
+
+/* ── Body ── */
+.report-table .report-table__body {
   display: grid;
+  gap: 20px;
+  padding: 28px;
+}
+
+/* ── Toolbar ── */
+.report-table .report-table__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
 }
 
-.report-table .report-table__filter {
-  display: grid;
+.report-table .report-table__legend {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
-.report-table .report-table__filter-label {
-  color: var(--report-table-text);
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.report-table select,
 .report-table .report-table__button {
-  min-height: 44px;
-  width: 100%;
-  padding: 0 14px;
-  border: 1px solid var(--report-table-border);
-  border-radius: 14px;
-  background: #fff;
-  color: var(--report-table-text);
-  font: inherit;
-}
-
-.report-table .report-table__button {
-  width: auto;
-  padding: 0 18px;
-  color: #fff;
+  min-height: 40px;
+  padding: 0 20px;
+  border: 1.5px solid var(--report-table-accent);
+  border-radius: 999px;
   background: var(--report-table-accent);
-  border-color: var(--report-table-accent);
+  color: #fff;
+  font: inherit;
   font-weight: 700;
+  font-size: 0.875rem;
   cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 120ms ease;
 }
 
+.report-table .report-table__button:hover {
+  background: var(--report-table-accent-strong);
+  border-color: var(--report-table-accent-strong);
+  transform: translateY(-1px);
+}
+
+.report-table .report-table__button:focus-visible {
+  outline: none;
+  box-shadow: var(--report-table-focus);
+}
+
+/* ── Level badges ── */
+.report-table .report-table__badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.report-table .report-table__badge--none {
+  color: #b0bac5;
+}
+
+.report-table .report-table__badge--l1 {
+  background: #e8f0fe;
+  color: #1a56db;
+}
+
+.report-table .report-table__badge--l2 {
+  background: #fff4e0;
+  color: #c96a00;
+}
+
+.report-table .report-table__badge--l3 {
+  background: #e6fdf8;
+  color: #0f766e;
+}
+
+.report-table .report-table__badge--l4 {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.report-table .report-table__badge--l5 {
+  background: #f5f0ff;
+  color: #7e22ce;
+}
+
+/* ── Table ── */
 .report-table .report-table__table-wrapper {
   overflow-x: auto;
   border: 1px solid var(--report-table-border);
-  border-radius: 20px;
-  background: var(--report-table-surface);
+  border-radius: 16px;
 }
 
 .report-table .report-table__table {
   width: 100%;
   border-collapse: collapse;
+  white-space: nowrap;
 }
 
 .report-table .report-table__table th,
 .report-table .report-table__table td {
-  padding: 14px 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid #edf1f6;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .report-table .report-table__table th {
   background: var(--report-table-surface-alt);
   color: var(--report-table-text);
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 800;
-}
-
-.report-table .report-table__table td {
-  color: var(--report-table-text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .report-table .report-table__table tbody tr:last-child td {
   border-bottom: 0;
 }
 
-.report-table .report-table__empty {
-  text-align: center;
+.report-table .report-table__table tbody tr:hover td {
+  background: #fafcff;
 }
 
+/* Sticky employee column */
+.report-table .report-table__col-employee,
+.report-table .report-table__cell-employee {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 160px;
+}
+
+.report-table .report-table__col-employee {
+  background: var(--report-table-surface-alt);
+}
+
+.report-table .report-table__cell-employee {
+  background: #fff;
+  color: var(--report-table-text);
+  font-weight: 600;
+  border-right: 1px solid var(--report-table-border);
+}
+
+.report-table .report-table__table tbody tr:hover .report-table__cell-employee {
+  background: #fafcff;
+}
+
+/* ── Responsive ── */
 @media (width >= 900px) {
-  .report-table .report-table__wrapper {
-    padding: 32px;
+  .report-table .report-table__header {
+    padding: 36px 36px 30px;
   }
 
-  .report-table .report-table__controls {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    align-items: end;
+  .report-table .report-table__body {
+    padding: 32px 36px;
   }
 }

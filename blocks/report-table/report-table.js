@@ -2,43 +2,51 @@ import { getLevelFromExperienceMonths } from '../../scripts/api.js';
 import {
   MANAGERS,
   MOCK_SUBMISSIONS,
-  SKILL_CATALOG,
   getSkillById,
 } from '../../scripts/skill-data.js';
 
 function readBlockConfig(block) {
   return [...block.children].reduce((config, row) => {
     const cells = [...row.children];
-    if (cells.length < 2) {
-      return config;
-    }
-
+    if (cells.length < 2) return config;
     const key = cells[0].textContent.trim().toLowerCase();
     const value = cells[1].textContent.trim();
-
-    if (key) {
-      config[key] = value;
-    }
-
+    if (key) config[key] = value;
     return config;
   }, {});
 }
 
 function createElement(tag, className, text) {
-  const element = document.createElement(tag);
-  if (className) {
-    element.className = className;
-  }
-  if (typeof text === 'string') {
-    element.textContent = text;
-  }
-  return element;
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (typeof text === 'string') el.textContent = text;
+  return el;
 }
 
-function toCsv(rows) {
-  return rows.map((row) => row
-    .map((value) => `"${String(value).replaceAll('"', '""')}"`)
-    .join(','))
+function buildMatrix() {
+  const skillIdOrder = [...new Set(MOCK_SUBMISSIONS.map((e) => e.skillId))];
+  const skills = skillIdOrder.map((id) => getSkillById(id)).filter(Boolean);
+
+  const employeeMap = {};
+  MOCK_SUBMISSIONS.forEach((entry) => {
+    if (!employeeMap[entry.employeeId]) {
+      employeeMap[entry.employeeId] = { id: entry.employeeId, name: entry.employeeName, skills: {} };
+    }
+    const level = getLevelFromExperienceMonths(entry.experienceMonths);
+    employeeMap[entry.employeeId].skills[entry.skillId] = { level, certified: entry.certified };
+  });
+
+  return { skills, employees: Object.values(employeeMap) };
+}
+
+function toCsv(matrix) {
+  const header = ['Employee', ...matrix.skills.map((s) => s.skillName)];
+  const rows = matrix.employees.map((emp) => [
+    emp.name,
+    ...matrix.skills.map((s) => emp.skills[s.skillId]?.level?.label || '—'),
+  ]);
+  return [header, ...rows]
+    .map((row) => row.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(','))
     .join('\n');
 }
 
@@ -52,173 +60,90 @@ function downloadCsv(filename, content) {
   URL.revokeObjectURL(href);
 }
 
-function normalizeRows() {
-  return MOCK_SUBMISSIONS.map((entry) => {
-    const skill = getSkillById(entry.skillId);
-    const level = getLevelFromExperienceMonths(entry.experienceMonths);
-
-    return {
-      employee: entry.employeeName,
-      manager: entry.managerName,
-      skill: skill?.skillName || 'Unknown Skill',
-      experienceMonths: entry.experienceMonths,
-      level: level ? `${level.level} - ${level.label}` : 'Not mapped',
-      certified: entry.certified ? 'Yes' : 'No',
-    };
-  });
+function createLevelBadge(levelObj) {
+  if (!levelObj) {
+    const badge = createElement('span', 'report-table__badge report-table__badge--none', '—');
+    return badge;
+  }
+  const badge = createElement('span', `report-table__badge report-table__badge--l${levelObj.level}`, levelObj.label);
+  return badge;
 }
 
 export default function decorate(block) {
   const config = readBlockConfig(block);
-  const state = {
-    manager: 'All',
-    skill: 'All',
-    level: 'All',
-  };
-  let render;
+  const manager = MANAGERS[0];
+  const matrix = buildMatrix();
 
-  const rows = normalizeRows();
-  const levelOptions = [...new Set(rows.map((entry) => entry.level))];
+  block.textContent = '';
+  const wrapper = createElement('div', 'report-table__wrapper');
 
-  function getFilteredRows() {
-    return rows.filter((row) => {
-      if (state.manager !== 'All' && row.manager !== state.manager) {
-        return false;
-      }
-      if (state.skill !== 'All' && row.skill !== state.skill) {
-        return false;
-      }
-      if (state.level !== 'All' && row.level !== state.level) {
-        return false;
-      }
-      return true;
+  // Header
+  const header = createElement('div', 'report-table__header');
+  header.append(
+    createElement('span', 'report-table__heading-accent'),
+    createElement('h2', 'report-table__heading', config.heading || `Welcome, ${manager.name}`),
+    createElement('p', 'report-table__meta', 'Manager View'),
+  );
+  wrapper.append(header);
+
+  // Body
+  const body = createElement('div', 'report-table__body');
+
+  // Legend + export row
+  const toolbar = createElement('div', 'report-table__toolbar');
+
+  const legend = createElement('div', 'report-table__legend');
+  [
+    ['l1', 'Foundational'],
+    ['l2', 'Developing'],
+    ['l3', 'Professional'],
+    ['l4', 'Expert'],
+    ['l5', 'Master'],
+  ].forEach(([mod, label]) => {
+    const item = createElement('span', 'report-table__legend-item');
+    item.append(createElement('span', `report-table__badge report-table__badge--${mod}`, label));
+    legend.append(item);
+  });
+  toolbar.append(legend);
+
+  const exportBtn = createElement('button', 'report-table__button', 'Export CSV');
+  exportBtn.type = 'button';
+  exportBtn.addEventListener('click', () => downloadCsv('skill-matrix.csv', toCsv(matrix)));
+  toolbar.append(exportBtn);
+  body.append(toolbar);
+
+  // Table
+  const tableWrapper = createElement('div', 'report-table__table-wrapper');
+  const table = createElement('table', 'report-table__table');
+
+  // Head
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  headerRow.append(createElement('th', 'report-table__col-employee', 'Employee'));
+  matrix.skills.forEach((skill) => {
+    const th = createElement('th', 'report-table__col-skill', skill.skillName);
+    headerRow.append(th);
+  });
+  thead.append(headerRow);
+  table.append(thead);
+
+  // Body
+  const tbody = document.createElement('tbody');
+  matrix.employees.forEach((emp) => {
+    const tr = document.createElement('tr');
+    tr.append(createElement('td', 'report-table__cell-employee', emp.name));
+    matrix.skills.forEach((skill) => {
+      const entry = emp.skills[skill.skillId];
+      const td = document.createElement('td');
+      td.append(createLevelBadge(entry?.level));
+      tr.append(td);
     });
-  }
+    tbody.append(tr);
+  });
+  table.append(tbody);
 
-  function buildSelect(labelText, value, options, onChange) {
-    const field = createElement('label', 'report-table__filter');
-    field.append(createElement('span', 'report-table__filter-label', labelText));
-
-    const select = document.createElement('select');
-    options.forEach((optionValue) => {
-      const option = document.createElement('option');
-      option.value = optionValue;
-      option.textContent = optionValue;
-      option.selected = optionValue === value;
-      select.append(option);
-    });
-    select.addEventListener('change', (event) => {
-      onChange(event.target.value);
-      render();
-    });
-
-    field.append(select);
-    return field;
-  }
-
-  function handleExport() {
-    const filteredRows = getFilteredRows();
-    const csvRows = [
-      ['Employee', 'Reporting Manager', 'Skill', 'Experience (Months)', 'Level', 'Certified'],
-      ...filteredRows.map((row) => [
-        row.employee,
-        row.manager,
-        row.skill,
-        row.experienceMonths,
-        row.level,
-        row.certified,
-      ]),
-    ];
-
-    downloadCsv('skill-report.csv', toCsv(csvRows));
-  }
-
-  render = function renderReportTable() {
-    const filteredRows = getFilteredRows();
-    block.textContent = '';
-
-    const wrapper = createElement('div', 'report-table__wrapper');
-    wrapper.append(createElement('h2', 'report-table__heading', config.heading || 'Manager Skill Report'));
-    wrapper.append(createElement(
-      'p',
-      'report-table__meta',
-      'Read-only report view for Phase 1 with manager, skill, and level filters.',
-    ));
-
-    const controls = createElement('div', 'report-table__controls');
-    controls.append(
-      buildSelect(
-        'Manager',
-        state.manager,
-        ['All', ...MANAGERS.map((entry) => entry.name)],
-        (nextValue) => { state.manager = nextValue; },
-      ),
-      buildSelect(
-        'Skill',
-        state.skill,
-        ['All', ...SKILL_CATALOG.map((entry) => entry.skillName)],
-        (nextValue) => { state.skill = nextValue; },
-      ),
-      buildSelect(
-        'Level',
-        state.level,
-        ['All', ...levelOptions],
-        (nextValue) => { state.level = nextValue; },
-      ),
-    );
-
-    const exportButton = createElement('button', 'report-table__button', 'Export CSV');
-    exportButton.type = 'button';
-    exportButton.addEventListener('click', handleExport);
-    controls.append(exportButton);
-    wrapper.append(controls);
-
-    const count = createElement(
-      'p',
-      'report-table__count',
-      `${filteredRows.length} submission${filteredRows.length === 1 ? '' : 's'}`,
-    );
-    wrapper.append(count);
-
-    const tableWrapper = createElement('div', 'report-table__table-wrapper');
-    const table = createElement('table', 'report-table__table');
-    const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    ['Employee', 'Reporting Manager', 'Skill', 'Experience (Months)', 'Level', 'Certified'].forEach((label) => {
-      headerRow.append(createElement('th', '', label));
-    });
-    thead.append(headerRow);
-    table.append(thead);
-
-    const tbody = document.createElement('tbody');
-    filteredRows.forEach((row) => {
-      const tr = document.createElement('tr');
-      [
-        row.employee,
-        row.manager,
-        row.skill,
-        String(row.experienceMonths),
-        row.level,
-        row.certified,
-      ].forEach((value) => {
-        tr.append(createElement('td', '', value));
-      });
-      tbody.append(tr);
-    });
-
-    if (filteredRows.length === 0) {
-      const emptyRow = document.createElement('tr');
-      const emptyCell = createElement('td', 'report-table__empty', 'No submissions match the current filters.');
-      emptyCell.colSpan = 6;
-      emptyRow.append(emptyCell);
-      tbody.append(emptyRow);
-    }
-
-    table.append(tbody);
-    tableWrapper.append(table);
-    wrapper.append(tableWrapper);
-    block.append(wrapper);
-  };
-
-  render();
+  tableWrapper.append(table);
+  body.append(tableWrapper);
+  wrapper.append(body);
+  block.append(wrapper);
 }
