@@ -195,19 +195,8 @@ async function initializePage() {
     return;
   }
 
-  const { isProtectedPage, initializeAuth } = await import('./auth.js');
-  if (!isProtectedPage()) {
-    loadPage();
-    return;
-  }
-
-  try {
-    const authenticated = await initializeAuth();
-    if (authenticated) loadPage();
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Adobe IMS failed to initialize', error);
-  }
+  const { initAuth } = await import('./auth.js');
+  initAuth(loadPage);
 }
 
 initializePage();

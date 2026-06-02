@@ -1,54 +1,59 @@
-import adobeImsConfig from './adobe-ims-config.js';
-import {
-  isAuthenticated,
-  handleRedirectCallback,
-  getUserProfile,
-  clearSession,
-  login,
-  logout as imsLogout,
-} from './adobe-ims-client.js';
 import { setUser, clearUser } from './db.js';
 
-export function isProtectedPage() {
-  return adobeImsConfig.protectedPaths.some(
-    (path) => window.location.pathname === path
-      || window.location.pathname.startsWith(`${path}/`),
-  );
+const IS_PROD = window.location.hostname.endsWith('.aem.live');
+
+function loadScript(src) {
+  const script = document.createElement('script');
+  script.src = src;
+  document.head.append(script);
 }
 
-export async function initializeAuth() {
-  const url = new URL(window.location.href);
+let imsLoaded;
 
-  if (url.searchParams.has('code')) {
-    try {
-      const { originalUri } = await handleRedirectCallback();
-      window.history.replaceState({}, '', originalUri);
-    } catch {
-      return false;
-    }
-  }
-
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    await login(window.location.href);
-    return false;
-  }
-
-  try {
-    const profile = await getUserProfile();
-    await setUser({
-      name: profile.name || '',
-      email: profile.email || '',
-      ldap: profile.account_id || '',
-      isManager: false,
+async function loadIms(onReady) {
+  if (!imsLoaded) {
+    imsLoaded = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('IMS timeout')), 5000);
+      window.adobeid = {
+        client_id: 'adobe_skill_mapping',
+        environment: IS_PROD ? 'prod' : 'stg1',
+        scope: 'account_cluster.read,additional_info.company,additional_info.ownerOrg,AdobeID,avatar,create_session,exchange.openid-AdobeID-creative_cloud,openid,read_organizations,read_pc',
+        debug: false,
+        onReady: async () => {
+          clearTimeout(timeout);
+          if (window.adobeIMS?.isSignedInUser()) {
+            try {
+              const profile = await window.adobeIMS.getProfile();
+              await setUser({
+                name: profile.displayName || '',
+                email: profile.email || '',
+                ldap: profile.userId || '',
+                isManager: false,
+              });
+            } catch { /* continue if profile fetch fails */ }
+            onReady();
+          } else {
+            window.adobeIMS?.signIn();
+          }
+          resolve();
+        },
+        onError: reject,
+      };
+      loadScript('https://auth.services.adobe.com/imslib/imslib.min.js');
     });
-  } catch { /* continue even if profile fetch fails */ }
+  }
+  return imsLoaded;
+}
 
-  return true;
+export async function initAuth(onReady) {
+  await loadIms(onReady);
 }
 
 export default async function logout() {
   await clearUser();
-  clearSession();
-  await imsLogout();
+  if (window.adobeIMS) {
+    window.adobeIMS.signOut();
+  } else {
+    window.location.replace('/');
+  }
 }
