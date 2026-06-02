@@ -15,7 +15,7 @@ async function loadIms(onReady) {
     imsLoaded = new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('IMS timeout')), 5000);
       window.adobeid = {
-        client_id: 'adobe_skill_mapping',
+        client_id: 'uidashboard',
         environment: IS_PROD ? 'prod' : 'stg1',
         scope: 'additional_info,AdobeID,openid,person',
         debug: false,
