@@ -24,10 +24,11 @@ async function loadIms(onReady) {
           if (window.adobeIMS?.isSignedInUser()) {
             try {
               const profile = await window.adobeIMS.getProfile();
+              const email = profile.email || '';
               await setUser({
                 name: profile.displayName || '',
-                email: profile.email || '',
-                ldap: profile.userId || '',
+                email,
+                ldap: email.split('@')[0] || profile.userId || '',
                 isManager: false,
               });
             } catch { /* continue if profile fetch fails */ }
