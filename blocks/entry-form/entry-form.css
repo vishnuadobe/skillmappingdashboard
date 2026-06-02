@@ -1,3 +1,13 @@
+/* Fix the content area below the header — fills remaining viewport */
+.section.entry-form-container {
+  position: fixed;
+  inset: var(--nav-height) 0 0 0;
+  margin: 0 !important;
+  padding-top: 24px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
 .entry-form {
   --entry-form-accent: #1473e6;
   --entry-form-accent-strong: #0d66d0;
