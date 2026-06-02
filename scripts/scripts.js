@@ -186,4 +186,17 @@ async function loadPage() {
   loadDelayed();
 }
 
-loadPage();
+async function initializePage() {
+  const isLocal = window.location.hostname === 'localhost';
+  const isPreview = window.location.hostname.includes('.aem.page');
+
+  if (isLocal || isPreview) {
+    loadPage();
+    return;
+  }
+
+  const { initAuth } = await import('./auth.js');
+  initAuth(loadPage);
+}
+
+initializePage();

@@ -3,6 +3,7 @@ import {
   getLevelFromExperienceMonths,
   submitSkillReport,
 } from '../../scripts/api.js';
+import { getUser } from '../../scripts/db.js';
 import {
   getCategoryFromAdoptionRate,
   getSkillAdoptionSnapshot,
@@ -129,15 +130,18 @@ function openPrintPreview(preview) {
   win.document.close();
 }
 
-export default function decorate(block) {
+export default async function decorate(block) {
   const config = readBlockConfig(block);
+  const user = await getUser();
   const state = {
     mode: 'form',
     busy: false,
     message: '',
     messageType: '',
     values: {
-      employeeId: config['employee-id'] || 'robinvarshn',
+      employeeId: user?.ldap || config['employee-id'] || 'robinvarshn',
+      email: user?.email || '',
+      name: user?.name || '',
       skills: [createEmptySkill()],
     },
   };
