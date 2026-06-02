@@ -16,7 +16,7 @@ async function loadIms(onReady) {
       const timeout = setTimeout(() => reject(new Error('IMS timeout')), 5000);
       window.adobeid = {
         client_id: 'adobe_skill_mapping',
-        environment: IS_PROD ? 'prod' : 'stg1',
+        environment: 'stg1',
         scope: 'account_cluster.read,additional_info.company,additional_info.ownerOrg,AdobeID,avatar,create_session,exchange.openid-AdobeID-creative_cloud,openid,read_organizations,read_pc',
         debug: false,
         onReady: async () => {
