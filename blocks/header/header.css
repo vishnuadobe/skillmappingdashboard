@@ -31,7 +31,7 @@
 }
 
 /* Fallback when logo is text */
-.header .header__brand:not(:has(img)):not(:has(picture)) {
+.header .header__brand:not(:has(img), :has(picture)) {
   font-size: 1.5rem;
   font-weight: 800;
   color: #fa0f00;
