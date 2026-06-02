@@ -1,0 +1,76 @@
+.header nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--nav-height);
+  padding: 0 32px;
+  background: var(--background-color);
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 6px rgb(0 0 0 / 8%);
+}
+
+/* Brand / logo link */
+.header .header__brand {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.header .header__brand img,
+.header .header__brand picture {
+  display: block;
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* Fallback when logo is text */
+.header .header__brand:not(:has(img)):not(:has(picture)) {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fa0f00;
+  line-height: 1;
+}
+
+/* Actions area */
+.header .header__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Logout button — explicit reset to avoid global button inheritance conflicts */
+.header .header__logout-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 20px;
+  border: 1.5px solid #131313;
+  border-radius: 999px;
+  background: transparent;
+  color: #131313;
+  font-family: var(--body-font-family);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.header .header__logout-btn:hover {
+  background: #131313;
+  color: #fff;
+}
+
+.header .header__logout-btn:focus-visible {
+  outline: 2px solid #131313;
+  outline-offset: 2px;
+}
