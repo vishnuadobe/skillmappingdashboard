@@ -150,7 +150,7 @@ export default async function decorate(block) {
     return buildSkillsPayload(state.employeeId, state.email, state.name, skillsData);
   }
 
-  async function handleConfirm() {
+  async function handleSubmit() {
     state.busy = true;
     state.message = '';
     state.messageType = '';
@@ -162,7 +162,6 @@ export default async function decorate(block) {
       state.message = 'Submission saved successfully.';
       state.messageType = 'success';
     } catch {
-      state.mode = 'preview';
       state.message = 'Submission failed. Please try again.';
       state.messageType = 'error';
     } finally {
@@ -392,40 +391,16 @@ export default async function decorate(block) {
 
     const footer = createElement('div', 'entry-form__form-footer');
     const countEl = createElement('span', 'entry-form__skill-count', `${state.rows.length} skill(s) added`);
-    const previewBtn = createElement('button', 'entry-form__button entry-form__button--primary', 'Preview Submission');
-    previewBtn.type = 'button';
-    previewBtn.disabled = state.rows.length === 0;
-    previewBtn.addEventListener('click', () => {
-      state.mode = 'preview';
-      state.message = '';
-      render();
-    });
-    footer.append(countEl, previewBtn);
-    wrapper.append(footer);
-  }
-
-  function renderPreview(wrapper) {
-    wrapper.append(createElement('h3', 'entry-form__preview-heading', 'Preview your submission'));
-    wrapper.append(renderTable(false));
-    renderMessage(wrapper);
-
-    const actions = createElement('div', 'entry-form__actions');
-
-    const backBtn = createElement('button', 'entry-form__button', 'Back to form');
-    backBtn.type = 'button';
-    backBtn.addEventListener('click', () => { state.mode = 'form'; state.message = ''; render(); });
-
-    const confirmBtn = createElement(
+    const submitBtn = createElement(
       'button',
       'entry-form__button entry-form__button--primary',
-      state.busy ? 'Saving…' : 'Confirm & Submit',
+      state.busy ? 'Submitting…' : 'Submit',
     );
-    confirmBtn.type = 'button';
-    confirmBtn.disabled = state.busy;
-    confirmBtn.addEventListener('click', handleConfirm);
-
-    actions.append(backBtn, confirmBtn);
-    wrapper.append(actions);
+    submitBtn.type = 'button';
+    submitBtn.disabled = state.rows.length === 0 || state.busy;
+    submitBtn.addEventListener('click', handleSubmit);
+    footer.append(countEl, submitBtn);
+    wrapper.append(footer);
   }
 
   function renderSuccess(wrapper) {
@@ -465,9 +440,7 @@ export default async function decorate(block) {
     wrapper.append(header);
 
     const body = createElement('div', 'entry-form__body');
-    if (state.mode === 'preview') {
-      renderPreview(body);
-    } else if (state.mode === 'success') {
+    if (state.mode === 'success') {
       renderSuccess(body);
     } else {
       renderForm(body);
