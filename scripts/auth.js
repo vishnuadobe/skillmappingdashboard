@@ -1,7 +1,5 @@
 import { setUser, clearUser } from './db.js';
 
-const IS_PROD = window.location.hostname.endsWith('.aem.live');
-
 function loadScript(src) {
   const script = document.createElement('script');
   script.src = src;

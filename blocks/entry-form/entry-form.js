@@ -4,11 +4,25 @@ import {
   submitSkillReport,
 } from '../../scripts/api.js';
 import { getUser } from '../../scripts/db.js';
-import {
-  getCategoryFromAdoptionRate,
-  getSkillAdoptionSnapshot,
-  getSkillByName,
-} from '../../scripts/skill-data.js';
+
+const EXP_OPTIONS = [
+  { label: '1–5 months', months: 5 },
+  { label: '6–10 months', months: 10 },
+  { label: '11–15 months', months: 15 },
+  { label: '16–20 months', months: 20 },
+  { label: '21+ months', months: 21 },
+];
+
+async function fetchSkillList() {
+  try {
+    const res = await fetch('/skill-levels.json?sheet=skills');
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.data || []).map((r) => r.name).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
 
 function readBlockConfig(block) {
   return [...block.children].reduce((config, row) => {
@@ -28,233 +42,135 @@ function createElement(tag, className, text) {
   return el;
 }
 
-function readFileAsDataUri(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error('Unable to read certificate file.'));
-    reader.readAsDataURL(file);
+function buildSelect(options, currentValue) {
+  const sel = document.createElement('select');
+  sel.className = 'entry-form__select';
+  options.forEach(({ value, label }) => {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = label;
+    if (value === String(currentValue)) opt.selected = true;
+    sel.append(opt);
   });
-}
-
-let fieldIdCounter = 0;
-
-function createField(labelText, control, fullWidth = false) {
-  const field = createElement('div', `entry-form__field${fullWidth ? ' entry-form__field--full' : ''}`);
-  const label = createElement('label', 'entry-form__label', labelText);
-  if (control.id || control.tagName === 'INPUT' || control.tagName === 'SELECT') {
-    if (!control.id) {
-      fieldIdCounter += 1;
-      control.id = `ef-field-${fieldIdCounter}`;
-    }
-    label.htmlFor = control.id;
-  }
-  field.append(label, control);
-  return field;
-}
-
-function createRadioGroup(name, selectedValue) {
-  const wrapper = createElement('div', 'entry-form__radio-group');
-  ['yes', 'no'].forEach((value) => {
-    const option = createElement('label', 'entry-form__radio');
-    const input = document.createElement('input');
-    input.type = 'radio';
-    input.name = name;
-    input.value = value;
-    input.checked = value === selectedValue;
-    option.append(input, createElement('span', '', value === 'yes' ? 'Yes' : 'No'));
-    wrapper.append(option);
-  });
-  return wrapper;
-}
-
-function createEmptySkill() {
-  return {
-    skillName: '',
-    experienceMonths: '',
-    certified: 'no',
-    certificateFile: null,
-    certificateDataUri: '',
-  };
-}
-
-function openPrintPreview(preview) {
-  const skillRows = preview.skills.map((skill, i) => `
-    <div class="skill">
-      ${preview.skills.length > 1 ? `<h3>Skill ${i + 1}</h3>` : ''}
-      <table>
-        <tr><td>Skill</td><td>${skill.skillName}</td></tr>
-        <tr><td>Experience</td><td>${skill.experienceMonths} months</td></tr>
-        <tr><td>Proficiency Level</td><td>${skill.level.level} — ${skill.level.label}</td></tr>
-        <tr><td>Skill Category</td><td>${skill.skillCategory}</td></tr>
-        <tr><td>Certified</td><td>${skill.certified ? 'Yes' : 'No'}</td></tr>
-      </table>
-      ${skill.certificateDataUri ? `<img src="${skill.certificateDataUri}" alt="Certificate" />` : ''}
-    </div>
-  `).join('');
-
-  const win = window.open('', '_blank');
-  win.document.write(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Skill Submission — ${preview.employeeId}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1f2937; padding: 48px; max-width: 700px; margin: 0 auto; }
-    .header { border-bottom: 3px solid #1473e6; padding-bottom: 20px; margin-bottom: 32px; }
-    .header h1 { font-size: 1.6rem; font-weight: 800; margin-bottom: 6px; }
-    .header p { color: #637083; font-size: 0.9rem; }
-    .skill { margin-bottom: 28px; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px; }
-    .skill h3 { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #637083; margin-bottom: 14px; }
-    table { width: 100%; border-collapse: collapse; }
-    td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; font-size: 0.9rem; }
-    td:first-child { font-weight: 600; width: 40%; color: #374151; }
-    td:last-child { color: #4b5563; }
-    tr:last-child td { border-bottom: 0; }
-    img { margin-top: 16px; max-width: 240px; border-radius: 8px; border: 1px solid #e5e7eb; }
-    .footer { margin-top: 40px; font-size: 0.8rem; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 16px; }
-    @media print { body { padding: 24px; } }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>Skill Submission</h1>
-    <p>Employee ID: ${preview.employeeId} &nbsp;·&nbsp; ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-  </div>
-  ${skillRows}
-  <div class="footer">Generated by Skill Navigator &nbsp;·&nbsp; Adobe</div>
-  <script>window.onload = () => { window.print(); }</script>
-</body>
-</html>`);
-  win.document.close();
+  return sel;
 }
 
 export default async function decorate(block) {
   const config = readBlockConfig(block);
-  const user = await getUser();
+  const [user, skillList] = await Promise.all([getUser(), fetchSkillList()]);
+
   const state = {
     mode: 'form',
     busy: false,
     message: '',
     messageType: '',
-    values: {
-      employeeId: user?.ldap || config['employee-id'] || 'robinvarshn',
-      email: user?.email || '',
-      name: user?.name || '',
-      skills: [createEmptySkill()],
+    employeeId: user?.ldap || config['employee-id'] || 'robinvarshn',
+    email: user?.email || '',
+    name: user?.name || '',
+    rows: [],
+    editingIndex: -1,
+    input: {
+      skill: '', skillOther: '', months: 0, cert: '', certTitle: '',
     },
   };
+
   let render;
 
-  async function getPreviewModel() {
-    const skills = await Promise.all(state.values.skills.map(async (skill) => {
-      const skillName = skill.skillName.trim();
-      const catalogSkill = getSkillByName(skillName);
-      const skillSnapshot = getSkillAdoptionSnapshot(skillName);
-      const level = await getLevelFromExperienceMonths(skill.experienceMonths);
-      return {
-        skillName,
-        skillId: catalogSkill?.skillId,
-        skillCategory: getCategoryFromAdoptionRate(skillSnapshot.adoptionRate),
-        skillSnapshot,
-        experienceMonths: Number(skill.experienceMonths),
-        certified: skill.certified === 'yes',
-        level,
-        certificateDataUri: skill.certificateDataUri,
-      };
-    }));
-
-    const payload = buildSkillsPayload(
-      state.values.employeeId,
-      state.values.email || '',
-      state.values.name || '',
-      await Promise.all(state.values.skills.map(async (skill) => {
-        const level = await getLevelFromExperienceMonths(skill.experienceMonths);
-        const entry = {
-          name: skill.skillName.trim(),
-          expInMonths: Number(skill.experienceMonths),
-          proficiencyLevel: level?.level || 1,
-        };
-        if (skill.certified === 'yes' && skill.certificateDataUri) {
-          entry.certification = {
-            name: skill.skillName.trim(),
-            imageUrl: skill.certificateDataUri,
-          };
-        }
-        return entry;
-      })),
-    );
-
-    return { employeeId: state.values.employeeId, skills, payload };
+  function getInputSkillName() {
+    return state.input.skill === 'other'
+      ? state.input.skillOther.trim()
+      : state.input.skill;
   }
 
-  async function validateForm() {
-    const errors = [];
-
-    for (let i = 0; i < state.values.skills.length; i += 1) {
-      const skill = state.values.skills[i];
-      const prefix = state.values.skills.length > 1 ? `Skill ${i + 1}: ` : '';
-      const months = Number(skill.experienceMonths);
-
-      if (!skill.skillName.trim()) {
-        errors.push(`${prefix}Skill name is required.`);
-      }
-      if (!Number.isFinite(months) || months < 1 || months > 1000) {
-        errors.push(`${prefix}Experience must be between 1 and 1000 months.`);
-      }
-      // eslint-disable-next-line no-await-in-loop
-      if (skill.skillName.trim() && !await getLevelFromExperienceMonths(months)) {
-        errors.push(`${prefix}Could not derive a proficiency level.`);
-      }
-      if (skill.certified === 'yes') {
-        const { certificateFile: file } = skill;
-        if (!file) {
-          errors.push(`${prefix}Certificate upload is required.`);
-        } else {
-          if (file.size > 50 * 1024) errors.push(`${prefix}Certificate must be 50 KB or smaller.`);
-          if (file.type !== 'image/png') errors.push(`${prefix}Certificate must be a PNG image.`);
-        }
-      }
+  function validateInput() {
+    if (!getInputSkillName()) throw new Error('Please select or type a skill.');
+    if (!state.input.months) throw new Error('Please select an experience range.');
+    if (!state.input.cert) throw new Error('Please select Yes or No for Certification.');
+    if (state.input.cert === 'yes' && !state.input.certTitle.trim()) {
+      throw new Error('Please enter the Title of Certificate.');
     }
-
-    if (errors.length > 0) throw new Error(errors.join(' '));
-
-    await Promise.all(state.values.skills.map(async (skill) => {
-      skill.certificateDataUri = skill.certified === 'yes'
-        ? await readFileAsDataUri(skill.certificateFile)
-        : '';
-    }));
   }
 
-  async function handlePreview(event) {
-    event.preventDefault();
+  function commitRow() {
+    validateInput();
+    const entry = {
+      skillName: getInputSkillName(),
+      months: state.input.months,
+      cert: state.input.cert,
+      certTitle: state.input.certTitle.trim(),
+    };
+    if (state.editingIndex >= 0) {
+      state.rows[state.editingIndex] = entry;
+      state.editingIndex = -1;
+    } else {
+      state.rows.push(entry);
+    }
+    state.input = {
+      skill: '', skillOther: '', months: 0, cert: '', certTitle: '',
+    };
     state.message = '';
     state.messageType = '';
-    try {
-      await validateForm();
-      state.mode = 'preview';
-    } catch (error) {
-      state.message = error.message;
-      state.messageType = 'error';
+    render();
+  }
+
+  function editRow(i) {
+    const s = state.rows[i];
+    const isPreset = skillList.includes(s.skillName);
+    state.input = {
+      skill: isPreset ? s.skillName : 'other',
+      skillOther: isPreset ? '' : s.skillName,
+      months: s.months,
+      cert: s.cert,
+      certTitle: s.certTitle,
+    };
+    state.editingIndex = i;
+    state.message = '';
+    render();
+  }
+
+  function deleteRow(i) {
+    state.rows.splice(i, 1);
+    if (state.editingIndex === i) {
+      state.editingIndex = -1;
+      state.input = {
+        skill: '', skillOther: '', months: 0, cert: '', certTitle: '',
+      };
+    } else if (state.editingIndex > i) {
+      state.editingIndex -= 1;
     }
     render();
   }
 
+  async function buildPayload() {
+    const skillsData = await Promise.all(state.rows.map(async (s) => {
+      const level = await getLevelFromExperienceMonths(s.months);
+      const entry = {
+        name: s.skillName,
+        expInMonths: s.months,
+        proficiencyLevel: level?.level || 1,
+      };
+      if (s.cert === 'yes') {
+        entry.certification = { name: s.certTitle, imageUrl: '' };
+      }
+      return entry;
+    }));
+    return buildSkillsPayload(state.employeeId, state.email, state.name, skillsData);
+  }
+
   async function handleConfirm() {
-    const preview = await getPreviewModel();
     state.busy = true;
     state.message = '';
     state.messageType = '';
     render();
-
     try {
-      await submitSkillReport(preview.payload);
+      const payload = await buildPayload();
+      await submitSkillReport(payload);
       state.mode = 'success';
       state.message = 'Submission saved successfully.';
       state.messageType = 'success';
     } catch {
-      state.message = 'Submission failed. Please try again once the API is available.';
+      state.mode = 'preview';
+      state.message = 'Submission failed. Please try again.';
       state.messageType = 'error';
     } finally {
       state.busy = false;
@@ -271,159 +187,258 @@ export default async function decorate(block) {
     ));
   }
 
-  function renderSkillEntry(skillIndex) {
-    const skill = state.values.skills[skillIndex];
-    const canRemove = state.values.skills.length > 1;
+  function renderInputRow() {
+    const tr = document.createElement('tr');
+    tr.className = `entry-form__input-row${state.editingIndex >= 0 ? ' entry-form__input-row--editing' : ''}`;
 
-    const entry = createElement('div', 'entry-form__skill-entry');
+    // ── Skill ──
+    const skillTd = document.createElement('td');
+    const skillOpts = [
+      { value: '', label: 'Select skill…' },
+      ...skillList.map((n) => ({ value: n, label: n })),
+      { value: 'other', label: 'Other…' },
+    ];
+    const skillSel = buildSelect(skillOpts, state.input.skill);
 
-    const entryHeader = createElement('div', 'entry-form__skill-header');
-    entryHeader.append(createElement('span', 'entry-form__skill-badge', `Skill ${skillIndex + 1}`));
+    const otherWrap = createElement('div', 'entry-form__other-wrap');
+    otherWrap.style.display = state.input.skill === 'other' ? 'block' : 'none';
+    const otherInput = document.createElement('input');
+    otherInput.type = 'text';
+    otherInput.className = 'entry-form__input entry-form__other-input';
+    otherInput.placeholder = 'Type your skill…';
+    otherInput.value = state.input.skillOther;
+    otherInput.addEventListener('input', (e) => { state.input.skillOther = e.target.value; });
+    otherWrap.append(otherInput);
 
-    if (canRemove) {
-      const removeBtn = createElement('button', 'entry-form__remove-btn', '×');
-      removeBtn.type = 'button';
-      removeBtn.setAttribute('aria-label', `Remove skill ${skillIndex + 1}`);
-      removeBtn.addEventListener('click', () => {
-        state.values.skills.splice(skillIndex, 1);
-        render();
-      });
-      entryHeader.append(removeBtn);
-    }
-    entry.append(entryHeader);
-
-    const fields = createElement('div', 'entry-form__skill-fields');
-
-    const skillInput = document.createElement('input');
-    skillInput.type = 'text';
-    skillInput.value = skill.skillName;
-    skillInput.placeholder = 'e.g. Adobe EDS, TypeScript';
-    skillInput.addEventListener('input', (e) => { skill.skillName = e.target.value; });
-    fields.append(createField('Skill Name', skillInput));
-
-    const expInput = document.createElement('input');
-    expInput.type = 'number';
-    expInput.min = '1';
-    expInput.max = '1000';
-    expInput.value = skill.experienceMonths;
-    expInput.placeholder = 'e.g. 12';
-    expInput.addEventListener('input', (e) => { skill.experienceMonths = e.target.value; });
-    fields.append(createField('Experience in Months', expInput));
-
-    const certGroup = createRadioGroup(`certified-${skillIndex}`, skill.certified);
-    certGroup.addEventListener('change', (e) => {
-      skill.certified = e.target.value;
-      if (skill.certified !== 'yes') {
-        skill.certificateFile = null;
-        skill.certificateDataUri = '';
+    skillSel.addEventListener('change', (e) => {
+      state.input.skill = e.target.value;
+      if (e.target.value !== 'other') {
+        state.input.skillOther = '';
+        otherWrap.style.display = 'none';
+        otherInput.value = '';
+      } else {
+        otherWrap.style.display = 'block';
+        otherInput.focus();
       }
-      render();
     });
-    fields.append(createField('Completed certification?', certGroup, true));
 
-    if (skill.certified === 'yes') {
-      const fileInput = document.createElement('input');
-      fileInput.type = 'file';
-      fileInput.accept = 'image/png';
-      fileInput.addEventListener('change', (e) => {
-        skill.certificateFile = e.target.files[0] || null;
-      });
-      fields.append(createField('Upload Certificate (PNG, max 50 KB)', fileInput, true));
+    skillTd.append(skillSel, otherWrap);
+    tr.append(skillTd);
+
+    // ── Experience ──
+    const expTd = document.createElement('td');
+    const expOpts = [
+      { value: '', label: 'Select…' },
+      ...EXP_OPTIONS.map(({ label, months }) => ({ value: String(months), label })),
+    ];
+    const expSel = buildSelect(expOpts, state.input.months || '');
+    expSel.addEventListener('change', (e) => { state.input.months = Number(e.target.value); });
+    expTd.append(expSel);
+    tr.append(expTd);
+
+    // ── Certification ──
+    const certTd = document.createElement('td');
+    const certSel = buildSelect([
+      { value: '', label: 'Select…' },
+      { value: 'no', label: 'No' },
+      { value: 'yes', label: 'Yes' },
+    ], state.input.cert);
+    certTd.append(certSel);
+    tr.append(certTd);
+
+    // ── Title of Certificate ──
+    const titleTd = document.createElement('td');
+    const certTitleWrap = createElement('div', 'entry-form__cert-title-wrap');
+    const certDash = createElement('span', 'entry-form__dash', '—');
+    const titleInput = document.createElement('input');
+    titleInput.type = 'text';
+    titleInput.className = 'entry-form__input';
+    titleInput.placeholder = 'e.g. AWS Certified Developer';
+    titleInput.value = state.input.certTitle;
+    titleInput.addEventListener('input', (e) => { state.input.certTitle = e.target.value; });
+    certTitleWrap.append(titleInput);
+
+    if (state.input.cert === 'yes') {
+      certTitleWrap.style.display = 'block';
+      certDash.style.display = 'none';
+    } else {
+      certTitleWrap.style.display = 'none';
     }
 
-    entry.append(fields);
-    return entry;
+    certSel.addEventListener('change', (e) => {
+      state.input.cert = e.target.value;
+      if (e.target.value === 'yes') {
+        certTitleWrap.style.display = 'block';
+        certDash.style.display = 'none';
+        titleInput.focus();
+      } else {
+        state.input.certTitle = '';
+        titleInput.value = '';
+        certTitleWrap.style.display = 'none';
+        certDash.style.display = '';
+      }
+    });
+
+    titleTd.append(certTitleWrap, certDash);
+    tr.append(titleTd);
+
+    // ── Add / Save button ──
+    const addTd = document.createElement('td');
+    addTd.className = 'entry-form__action-cell';
+    const addBtn = createElement(
+      'button',
+      'entry-form__add-btn',
+      state.editingIndex >= 0 ? 'Save' : '+ Add',
+    );
+    addBtn.type = 'button';
+    addBtn.addEventListener('click', () => {
+      try {
+        commitRow();
+      } catch (err) {
+        state.message = err.message;
+        state.messageType = 'error';
+        render();
+      }
+    });
+    addTd.append(addBtn);
+    tr.append(addTd);
+
+    return tr;
+  }
+
+  function renderDataRows() {
+    return state.rows.map((s, i) => {
+      const expOpt = EXP_OPTIONS.find((o) => o.months === s.months);
+      const expLabel = expOpt ? expOpt.label : `${s.months} months`;
+
+      const tr = document.createElement('tr');
+      tr.className = `entry-form__data-row${state.editingIndex === i ? ' entry-form__data-row--editing' : ''}`;
+
+      const skillTd = document.createElement('td');
+      skillTd.append(createElement('span', 'entry-form__skill-chip', s.skillName));
+
+      const expTd = createElement('td', 'entry-form__exp-cell', expLabel);
+
+      const certTd = document.createElement('td');
+      certTd.append(createElement(
+        'span',
+        `entry-form__cert-badge entry-form__cert-badge--${s.cert}`,
+        s.cert === 'yes' ? 'Yes' : 'No',
+      ));
+
+      const titleTd = document.createElement('td');
+      if (s.cert === 'yes') {
+        titleTd.append(createElement('strong', 'entry-form__cert-title', s.certTitle));
+      } else {
+        titleTd.append(createElement('span', 'entry-form__dash', '—'));
+      }
+
+      const actionTd = document.createElement('td');
+      actionTd.className = 'entry-form__action-cell';
+      const actionsWrap = createElement('div', 'entry-form__row-actions');
+
+      const editBtn = createElement('button', 'entry-form__icon-btn entry-form__icon-btn--edit', '✏');
+      editBtn.type = 'button';
+      editBtn.setAttribute('aria-label', `Edit ${s.skillName}`);
+      editBtn.addEventListener('click', () => editRow(i));
+
+      const delBtn = createElement('button', 'entry-form__icon-btn entry-form__icon-btn--del', '×');
+      delBtn.type = 'button';
+      delBtn.setAttribute('aria-label', `Remove ${s.skillName}`);
+      delBtn.addEventListener('click', () => deleteRow(i));
+
+      actionsWrap.append(editBtn, delBtn);
+      actionTd.append(actionsWrap);
+
+      tr.append(skillTd, expTd, certTd, titleTd, actionTd);
+      return tr;
+    });
+  }
+
+  function renderTable(showActions = true) {
+    const tableWrap = createElement('div', 'entry-form__table-wrap');
+    const table = document.createElement('table');
+    table.className = 'entry-form__skills-table';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    const headers = ['Skill', 'Experience', 'Certification', 'Title of Certificate'];
+    if (showActions) headers.push('');
+    headers.forEach((label) => headerRow.append(createElement('th', '', label)));
+    thead.append(headerRow);
+    table.append(thead);
+
+    const tbody = document.createElement('tbody');
+    if (state.rows.length === 0 && showActions) {
+      const emptyTr = document.createElement('tr');
+      const emptyTd = document.createElement('td');
+      emptyTd.colSpan = 5;
+      emptyTd.className = 'entry-form__empty-cell';
+      emptyTd.append(createElement('div', 'entry-form__empty-state', 'No skills added yet — fill in the row below and click + Add'));
+      emptyTr.append(emptyTd);
+      tbody.append(emptyTr);
+    } else {
+      renderDataRows().forEach((tr) => tbody.append(tr));
+    }
+    table.append(tbody);
+
+    if (showActions) {
+      const tfoot = document.createElement('tfoot');
+      tfoot.append(renderInputRow());
+      table.append(tfoot);
+    }
+
+    tableWrap.append(table);
+    return tableWrap;
   }
 
   function renderForm(wrapper) {
-    const form = createElement('form', 'entry-form__form');
-
-    const entries = createElement('div', 'entry-form__skill-entries');
-    state.values.skills.forEach((_, i) => entries.append(renderSkillEntry(i)));
-    form.append(entries);
+    renderMessage(wrapper);
+    wrapper.append(renderTable(true));
 
     const footer = createElement('div', 'entry-form__form-footer');
-
-    const addBtn = createElement('button', 'entry-form__button entry-form__button--ghost', '+ Add another skill');
-    addBtn.type = 'button';
-    addBtn.addEventListener('click', () => {
-      state.values.skills.push(createEmptySkill());
+    const countEl = createElement('span', 'entry-form__skill-count', `${state.rows.length} skill(s) added`);
+    const previewBtn = createElement('button', 'entry-form__button entry-form__button--primary', 'Preview Submission');
+    previewBtn.type = 'button';
+    previewBtn.disabled = state.rows.length === 0;
+    previewBtn.addEventListener('click', () => {
+      state.mode = 'preview';
+      state.message = '';
       render();
     });
-
-    const previewBtn = createElement('button', 'entry-form__button entry-form__button--primary', 'Preview Submission');
-    previewBtn.type = 'submit';
-
-    footer.append(addBtn, previewBtn);
-    form.append(footer);
-    form.addEventListener('submit', handlePreview);
-    wrapper.append(form);
+    footer.append(countEl, previewBtn);
+    wrapper.append(footer);
   }
 
-  async function renderPreview(wrapper) {
-    const preview = await getPreviewModel();
-    const card = createElement('section', 'entry-form__preview');
-    card.append(createElement('h3', 'entry-form__preview-heading', 'Preview your submission'));
-
-    preview.skills.forEach((skill, i) => {
-      const skillCard = createElement('div', 'entry-form__preview-skill');
-
-      if (preview.skills.length > 1) {
-        skillCard.append(createElement('p', 'entry-form__skill-badge', `Skill ${i + 1}`));
-      }
-
-      const list = createElement('dl', 'entry-form__summary');
-      [
-        ['Skill', skill.skillName],
-        ['Skill Category (provisional)', skill.skillCategory],
-        ['Skill Adoption', `${skill.skillSnapshot.adoptionRate}% of ${skill.skillSnapshot.totalEmployees} employees`],
-        ['Experience', `${skill.experienceMonths} months`],
-        ['Derived Level', `${skill.level.level} — ${skill.level.label}`],
-        ['Certified', skill.certified ? 'Yes' : 'No'],
-      ].forEach(([labelText, value]) => {
-        const row = createElement('div', 'entry-form__summary-row');
-        row.append(createElement('dt', 'entry-form__summary-label', labelText));
-        row.append(createElement('dd', 'entry-form__summary-value', value));
-        list.append(row);
-      });
-      skillCard.append(list);
-
-      if (skill.certificateDataUri) {
-        const img = document.createElement('img');
-        img.className = 'entry-form__certificate-preview';
-        img.src = skill.certificateDataUri;
-        img.alt = 'Uploaded certificate';
-        skillCard.append(img);
-      }
-
-      card.append(skillCard);
-    });
+  function renderPreview(wrapper) {
+    wrapper.append(createElement('h3', 'entry-form__preview-heading', 'Preview your submission'));
+    wrapper.append(renderTable(false));
+    renderMessage(wrapper);
 
     const actions = createElement('div', 'entry-form__actions');
 
     const backBtn = createElement('button', 'entry-form__button', 'Back to form');
     backBtn.type = 'button';
-    backBtn.addEventListener('click', () => { state.mode = 'form'; render(); });
+    backBtn.addEventListener('click', () => { state.mode = 'form'; state.message = ''; render(); });
 
-    const confirmBtn = createElement('button', 'entry-form__button entry-form__button--primary', state.busy ? 'Saving...' : 'Confirm and Submit');
+    const confirmBtn = createElement(
+      'button',
+      'entry-form__button entry-form__button--primary',
+      state.busy ? 'Saving…' : 'Confirm & Submit',
+    );
     confirmBtn.type = 'button';
     confirmBtn.disabled = state.busy;
     confirmBtn.addEventListener('click', handleConfirm);
 
-    const exportBtn = createElement('button', 'entry-form__button', 'Save as PDF');
-    exportBtn.type = 'button';
-    exportBtn.addEventListener('click', () => openPrintPreview(preview));
-
-    actions.append(backBtn, exportBtn, confirmBtn);
-    card.append(actions);
-    wrapper.append(card);
+    actions.append(backBtn, confirmBtn);
+    wrapper.append(actions);
   }
 
   function renderSuccess(wrapper) {
-    const success = createElement('section', 'entry-form__success');
+    renderMessage(wrapper);
+    const success = createElement('div', 'entry-form__success');
     success.append(createElement('h3', 'entry-form__preview-heading', 'Submission complete'));
     success.append(createElement('p', '', 'Your skills have been recorded. You can submit more skills using the button below.'));
-
     const actions = createElement('div', 'entry-form__actions');
     const resetBtn = createElement('button', 'entry-form__button entry-form__button--primary', 'Submit more skills');
     resetBtn.type = 'button';
@@ -431,7 +446,11 @@ export default async function decorate(block) {
       state.mode = 'form';
       state.message = '';
       state.messageType = '';
-      state.values.skills = [createEmptySkill()];
+      state.rows = [];
+      state.editingIndex = -1;
+      state.input = {
+        skill: '', skillOther: '', months: 0, cert: '', certTitle: '',
+      };
       render();
     });
     actions.append(resetBtn);
@@ -446,16 +465,14 @@ export default async function decorate(block) {
     const header = createElement('div', 'entry-form__header');
     header.append(
       createElement('span', 'entry-form__heading-accent'),
-      createElement('h2', 'entry-form__heading', config.heading || 'Skill Submission'),
-      createElement('p', 'entry-form__meta', `Employee ID: ${state.values.employeeId}`),
+      createElement('h2', 'entry-form__heading', config.heading || 'Submit your skills'),
+      createElement('p', 'entry-form__meta', `Employee ID: ${state.employeeId}`),
     );
     wrapper.append(header);
 
-    renderMessage(wrapper);
-
     const body = createElement('div', 'entry-form__body');
     if (state.mode === 'preview') {
-      renderPreview(body).catch(() => {});
+      renderPreview(body);
     } else if (state.mode === 'success') {
       renderSuccess(body);
     } else {

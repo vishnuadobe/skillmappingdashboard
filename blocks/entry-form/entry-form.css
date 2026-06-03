@@ -14,8 +14,6 @@
 }
 
 .entry-form .entry-form__wrapper {
-  display: grid;
-  gap: 0;
   border: 1px solid var(--entry-form-border);
   border-radius: 24px;
   background: var(--entry-form-surface);
@@ -23,7 +21,7 @@
   overflow: hidden;
 }
 
-/* ── Header banner ── */
+/* ── Header ── */
 .entry-form .entry-form__header {
   display: flex;
   flex-direction: column;
@@ -77,186 +75,121 @@
   flex-shrink: 0;
 }
 
-.entry-form .entry-form__intro {
-  margin: 0;
-  padding: 16px 28px;
-  color: var(--entry-form-text-muted);
-  font-size: 0.9rem;
-  line-height: 1.6;
-  border-bottom: 1px solid var(--entry-form-border);
-  background: #fffdf0;
-}
-
 /* ── Body ── */
 .entry-form .entry-form__body {
   padding: 28px;
 }
 
-.entry-form .entry-form__form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.entry-form .entry-form__preview,
-.entry-form .entry-form__success {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.entry-form .entry-form__field {
-  display: grid;
-  gap: 8px;
-}
-
-.entry-form .entry-form__label,
-.entry-form .entry-form__summary-label {
-  color: var(--entry-form-text);
-  font-size: 0.875rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
-.entry-form input[type='text'],
-.entry-form select,
-.entry-form input[type='number'],
-.entry-form input[type='file'] {
-  box-sizing: border-box;
-  min-height: 52px;
-  width: 100%;
-  padding: 0 18px;
-  border: 1.5px solid var(--entry-form-border);
-  border-radius: 14px;
-  background: #fff;
-  color: var(--entry-form-text);
-  font: inherit;
-  font-size: 1rem;
-  transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.entry-form input[type='text']::placeholder,
-.entry-form input[type='number']::placeholder {
-  color: #9eaab8;
-}
-
-.entry-form input[type='file'] {
-  padding: 8px 8px 8px 12px;
-  background: #fbfdff;
-  cursor: pointer;
-}
-
-.entry-form input[type='file']::file-selector-button {
-  height: 36px;
-  padding: 0 16px;
-  margin-right: 14px;
-  border: 1.5px solid var(--entry-form-accent);
-  border-radius: 999px;
-  background: var(--entry-form-accent);
-  color: #fff;
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background-color 160ms ease, border-color 160ms ease;
-}
-
-.entry-form input[type='file']::file-selector-button:hover {
-  background: var(--entry-form-accent-strong);
-  border-color: var(--entry-form-accent-strong);
-}
-
-.entry-form input[type='text']:focus-visible,
-.entry-form select:focus-visible,
-.entry-form input[type='number']:focus-visible,
-.entry-form input[type='file']:focus-visible {
-  outline: none;
-  border-color: var(--entry-form-accent);
-  box-shadow: var(--entry-form-focus);
-}
-
-.entry-form .entry-form__radio-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.entry-form .entry-form__radio {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 0 18px;
-  border: 1.5px solid var(--entry-form-border);
-  border-radius: 999px;
-  background: #fff;
-  color: var(--entry-form-text);
-  cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    background-color 160ms ease;
-}
-
-.entry-form .entry-form__radio input[type='radio'] {
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--entry-form-border);
-  border-radius: 50%;
-  flex-shrink: 0;
-  transition: border-color 160ms ease;
-}
-
-.entry-form .entry-form__radio:has(input:checked) {
-  border-color: var(--entry-form-accent);
-  background: #edf5ff;
-  color: var(--entry-form-accent-strong);
-  font-weight: 600;
-}
-
-.entry-form .entry-form__radio:has(input:checked) input[type='radio'] {
-  border-color: var(--entry-form-accent);
-  border-width: 5px;
-  background: #fff;
-}
-
-.entry-form .entry-form__radio:has(input:focus-visible) {
-  box-shadow: var(--entry-form-focus);
-}
-
-/* ── Skill entries ── */
-.entry-form .entry-form__skill-entries {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.entry-form .entry-form__skill-entry {
+/* ── Table wrapper ── */
+.entry-form .entry-form__table-wrap {
+  overflow-x: auto;
   border: 1.5px solid var(--entry-form-border);
   border-radius: 16px;
-  overflow: hidden;
 }
 
-.entry-form .entry-form__skill-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
+/* ── Skills table ── */
+.entry-form .entry-form__skills-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+}
+
+.entry-form .entry-form__skills-table thead tr {
   background: var(--entry-form-surface-alt);
-  border-bottom: 1px solid var(--entry-form-border);
+  border-bottom: 1.5px solid var(--entry-form-border);
 }
 
-.entry-form .entry-form__skill-badge {
-  font-size: 0.8rem;
+.entry-form .entry-form__skills-table thead th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 0.72rem;
   font-weight: 700;
-  color: var(--entry-form-text-muted);
-  letter-spacing: 0.05em;
   text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--entry-form-text-muted);
+  white-space: nowrap;
 }
 
-.entry-form .entry-form__remove-btn {
+.entry-form .entry-form__skills-table thead th:last-child {
+  width: 80px;
+  text-align: center;
+}
+
+/* ── Data rows ── */
+.entry-form .entry-form__data-row {
+  border-bottom: 1px solid #edf0f5;
+  transition: background 120ms ease;
+}
+
+.entry-form .entry-form__data-row:last-child {
+  border-bottom: none;
+}
+
+.entry-form .entry-form__data-row:hover {
+  background: var(--entry-form-surface-alt);
+}
+
+.entry-form .entry-form__data-row--editing {
+  background: #fffbeb;
+}
+
+.entry-form .entry-form__data-row td {
+  padding: 13px 16px;
+  font-size: 0.9rem;
+  color: var(--entry-form-text);
+  vertical-align: middle;
+}
+
+.entry-form .entry-form__data-row td:last-child {
+  text-align: center;
+}
+
+/* ── Chips / badges ── */
+.entry-form .entry-form__skill-chip {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #edf5ff;
+  color: var(--entry-form-accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.entry-form .entry-form__cert-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.entry-form .entry-form__cert-badge--yes {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.entry-form .entry-form__cert-badge--no {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.entry-form .entry-form__cert-title {
+  font-size: 0.88rem;
+}
+
+.entry-form .entry-form__dash {
+  color: #c4cdd8;
+}
+
+/* ── Row action buttons ── */
+.entry-form .entry-form__row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.entry-form .entry-form__icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -265,74 +198,159 @@
   border: 1px solid var(--entry-form-border);
   border-radius: 50%;
   background: #fff;
-  color: var(--entry-form-text-muted);
-  font-size: 1.1rem;
-  line-height: 1;
+  font-size: 0.8rem;
   cursor: pointer;
-  transition: border-color 160ms ease, color 160ms ease;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
 }
 
-.entry-form .entry-form__remove-btn:hover {
+.entry-form .entry-form__icon-btn--edit {
+  color: var(--entry-form-accent);
+}
+
+.entry-form .entry-form__icon-btn--edit:hover {
+  border-color: var(--entry-form-accent);
+  background: #edf5ff;
+}
+
+.entry-form .entry-form__icon-btn--del {
+  color: #9ca3af;
+}
+
+.entry-form .entry-form__icon-btn--del:hover {
   border-color: var(--entry-form-danger);
   color: var(--entry-form-danger);
 }
 
-.entry-form .entry-form__skill-fields {
-  display: grid;
-  gap: 16px;
-  padding: 16px;
+/* ── Empty state ── */
+.entry-form .entry-form__empty-cell {
+  text-align: center;
 }
 
-.entry-form .entry-form__field--full {
-  grid-column: 1 / -1;
+.entry-form .entry-form__empty-state {
+  padding: 28px 16px;
+  color: #9ca3af;
+  font-size: 0.88rem;
+}
+
+/* ── Input row (tfoot) ── */
+.entry-form .entry-form__skills-table .entry-form__input-row td {
+  padding: 10px 8px;
+  background: var(--entry-form-surface-alt);
+  border-top: 1.5px solid var(--entry-form-border);
+  vertical-align: top;
+}
+
+.entry-form .entry-form__skills-table .entry-form__input-row--editing td {
+  background: #fffbeb;
+  border-top-color: #fbbf24;
+}
+
+.entry-form .entry-form__skills-table .entry-form__input-row td:first-child {
+  padding-left: 12px;
+}
+
+.entry-form .entry-form__skills-table .entry-form__input-row td:last-child {
+  padding-right: 12px;
+  vertical-align: middle;
+  text-align: center;
+}
+
+/* ── Select & text input ── */
+.entry-form .entry-form__select,
+.entry-form .entry-form__input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1.5px solid var(--entry-form-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--entry-form-text);
+  font: inherit;
+  font-size: 0.88rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+  appearance: none;
+}
+
+.entry-form .entry-form__select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23637083' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
+  cursor: pointer;
+}
+
+.entry-form .entry-form__select:focus,
+.entry-form .entry-form__input:focus {
+  outline: none;
+  border-color: var(--entry-form-accent);
+  box-shadow: var(--entry-form-focus);
+}
+
+.entry-form .entry-form__input::placeholder {
+  color: #9eaab8;
+}
+
+/* Other-skill input appears below the select */
+.entry-form .entry-form__other-wrap {
+  margin-top: 6px;
+}
+
+/* Cert title input appears in its own cell */
+.entry-form .entry-form__cert-title-wrap {
+  display: none;
+}
+
+/* ── Add / Save button ── */
+.entry-form .entry-form__add-btn {
+  height: 42px;
+  padding: 0 16px;
+  border: 1.5px solid var(--entry-form-accent);
+  border-radius: 10px;
+  background: var(--entry-form-accent);
+  color: #fff;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 160ms ease, border-color 160ms ease;
+  width: 100%;
+}
+
+.entry-form .entry-form__add-btn:hover {
+  background: var(--entry-form-accent-strong);
+  border-color: var(--entry-form-accent-strong);
 }
 
 /* ── Form footer ── */
 .entry-form .entry-form__form-footer {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
-  padding-top: 8px;
+  padding-top: 20px;
 }
 
-.entry-form .entry-form__button--ghost {
-  border-color: var(--entry-form-border);
-  background: transparent;
-  color: var(--entry-form-accent);
-  font-weight: 700;
+.entry-form .entry-form__skill-count {
+  font-size: 0.8rem;
+  color: #9ca3af;
 }
 
-.entry-form .entry-form__button--ghost:hover {
-  border-color: var(--entry-form-accent);
-  background: #edf5ff;
-}
-
-/* ── Preview skill cards ── */
-.entry-form .entry-form__preview-skill {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--entry-form-border);
-  border-radius: 14px;
-  background: var(--entry-form-surface-alt);
-}
-
-/* ── Actions ── */
+/* ── Action row (preview/success) ── */
 .entry-form .entry-form__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  padding-top: 8px;
+  padding-top: 20px;
   border-top: 1px solid var(--entry-form-border);
   margin-top: 4px;
 }
 
+/* ── Shared button ── */
 .entry-form .entry-form__button {
-  min-height: 44px;
-  padding: 0 22px;
+  min-height: 46px;
+  padding: 0 24px;
   border: 1.5px solid var(--entry-form-border);
   border-radius: 999px;
   background: #fff;
@@ -360,20 +378,27 @@
   transform: translateY(-1px);
 }
 
+.entry-form .entry-form__button--primary:hover {
+  background: var(--entry-form-accent-strong);
+  border-color: var(--entry-form-accent-strong);
+}
+
 .entry-form .entry-form__button:focus-visible {
   outline: none;
   box-shadow: var(--entry-form-focus);
 }
 
-.entry-form .entry-form__button--primary:hover,
-.entry-form .entry-form__button--primary:focus-visible {
-  background: var(--entry-form-accent-strong);
-  border-color: var(--entry-form-accent-strong);
+.entry-form .entry-form__button:disabled {
+  background: #c4cdd8;
+  border-color: #c4cdd8;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 /* ── Messages ── */
 .entry-form .entry-form__message {
-  margin: 0;
+  margin: 0 0 16px;
   padding: 14px 18px;
   border-radius: 14px;
   font-weight: 600;
@@ -390,50 +415,19 @@
   color: var(--entry-form-success);
 }
 
-/* ── Preview ── */
+/* ── Preview heading ── */
 .entry-form .entry-form__preview-heading {
-  margin: 0;
+  margin: 0 0 20px;
   color: var(--entry-form-text);
   font-size: 1.15rem;
   font-weight: 800;
 }
 
-.entry-form .entry-form__summary {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-}
-
-.entry-form .entry-form__summary-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
-  align-items: baseline;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  background: var(--entry-form-surface-alt);
-  border: 1px solid transparent;
-  transition: border-color 120ms ease;
-}
-
-.entry-form .entry-form__summary-row:hover {
-  border-color: var(--entry-form-border);
-}
-
-.entry-form .entry-form__summary-value {
-  margin: 0;
-  color: var(--entry-form-text-muted);
-  font-weight: 500;
-}
-
-.entry-form .entry-form__certificate-preview {
-  width: min(100%, 320px);
-  border-radius: 14px;
-  border: 1px solid var(--entry-form-border);
-}
-
 /* ── Success ── */
 .entry-form .entry-form__success {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   text-align: center;
   padding: 24px 0;
 }
@@ -446,17 +440,5 @@
 
   .entry-form .entry-form__body {
     padding: 32px 36px;
-  }
-
-  .entry-form .entry-form__intro {
-    padding: 16px 36px;
-  }
-
-  .entry-form .entry-form__form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .entry-form .entry-form__skill-fields {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
