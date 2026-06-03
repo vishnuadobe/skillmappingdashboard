@@ -31,7 +31,9 @@ async function requestJson(path, options = {}) {
 async function fetchExperienceLevels() {
   if (levelsCache) return levelsCache;
   const { data } = await requestJson('/skill-levels.json');
-  levelsCache = data.map((row) => ({
+  const rows = Array.isArray(data) ? data : data?.data;
+  if (!Array.isArray(rows)) throw new Error(`skill-levels.json returned unexpected data: ${JSON.stringify(data)}`);
+  levelsCache = rows.map((row) => ({
     maxMonths: Number(row['max-months']),
     level: Number(row.level),
     label: row.label,
