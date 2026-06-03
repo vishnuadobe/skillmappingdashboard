@@ -168,9 +168,11 @@ export default async function decorate(block) {
       state.mode = 'success';
       state.message = 'Submission saved successfully.';
       state.messageType = 'success';
-    } catch {
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Submission error:', err);
       state.mode = 'preview';
-      state.message = 'Submission failed. Please try again.';
+      state.message = `Submission failed: ${err.message || 'Please try again.'}`;
       state.messageType = 'error';
     } finally {
       state.busy = false;
