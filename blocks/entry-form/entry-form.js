@@ -5,13 +5,40 @@ import {
 } from '../../scripts/api.js';
 import { getUser } from '../../scripts/db.js';
 
-const EXP_OPTIONS = [
+const EXP_OPTIONS_FALLBACK = [
   { label: '1–5 months', months: 5 },
   { label: '6–10 months', months: 10 },
   { label: '11–15 months', months: 15 },
   { label: '16–20 months', months: 20 },
   { label: '21+ months', months: 21 },
 ];
+
+async function fetchExpOptions() {
+  try {
+    const res = await fetch('/skill-levels.json');
+    if (!res.ok) return null;
+    const json = await res.json();
+    const levels = (json.data || [])
+      .filter((r) => r['max-months'])
+      .map((r) => ({ maxMonths: Number(r['max-months']) }))
+      .sort((a, b) => a.maxMonths - b.maxMonths);
+    if (!levels.length) return null;
+    return levels.map(({ maxMonths }, i) => {
+      const from = i === 0 ? 1 : levels[i - 1].maxMonths + 1;
+      let label;
+      if (maxMonths >= 999) {
+        label = `${from}+ months`;
+      } else if (from === maxMonths) {
+        label = `${from} month${from === 1 ? '' : 's'}`;
+      } else {
+        label = `${from}–${maxMonths} months`;
+      }
+      return { label, months: maxMonths };
+    });
+  } catch {
+    return null;
+  }
+}
 
 async function fetchSkillList() {
   try {
@@ -57,7 +84,10 @@ function buildSelect(options, currentValue) {
 
 export default async function decorate(block) {
   const config = readBlockConfig(block);
-  const [user, skillList] = await Promise.all([getUser(), fetchSkillList()]);
+  const [user, skillList, fetchedExpOptions] = await Promise.all([
+    getUser(), fetchSkillList(), fetchExpOptions(),
+  ]);
+  const expOptions = fetchedExpOptions || EXP_OPTIONS_FALLBACK;
 
   const state = {
     mode: 'form',
@@ -229,7 +259,7 @@ export default async function decorate(block) {
     const expTd = document.createElement('td');
     const expOpts = [
       { value: '', label: 'Select…' },
-      ...EXP_OPTIONS.map(({ label, months }) => ({ value: String(months), label })),
+      ...expOptions.map(({ label, months }) => ({ value: String(months), label })),
     ];
     const expSel = buildSelect(expOpts, state.input.months || '');
     expSel.addEventListener('change', (e) => { state.input.months = Number(e.target.value); });
@@ -308,7 +338,7 @@ export default async function decorate(block) {
 
   function renderDataRows() {
     return state.rows.map((s, i) => {
-      const expOpt = EXP_OPTIONS.find((o) => o.months === s.months);
+      const expOpt = expOptions.find((o) => o.months === s.months);
       const expLabel = expOpt ? expOpt.label : `${s.months} months`;
 
       const tr = document.createElement('tr');
