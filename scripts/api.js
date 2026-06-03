@@ -13,9 +13,11 @@ function ensureOk(response) {
 }
 
 async function requestJson(path, options = {}) {
+  const token = window.adobeIMS?.getAccessToken()?.token;
   const response = await fetch(path, {
     headers: {
       Accept: 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     },
     ...options,

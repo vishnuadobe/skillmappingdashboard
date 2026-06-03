@@ -466,7 +466,7 @@ export default async function decorate(block) {
     header.append(
       createElement('span', 'entry-form__heading-accent'),
       createElement('h2', 'entry-form__heading', config.heading || 'Submit your skills'),
-      createElement('p', 'entry-form__meta', `Employee ID: ${state.employeeId}`),
+      createElement('p', 'entry-form__meta', state.name || state.employeeId),
     );
     wrapper.append(header);
 
