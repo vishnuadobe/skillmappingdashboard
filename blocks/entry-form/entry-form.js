@@ -5,44 +5,9 @@ import {
 } from '../../scripts/api.js';
 import { getUser } from '../../scripts/db.js';
 
-const EXP_OPTIONS_FALLBACK = [
-  { label: '1–5 months', months: 5 },
-  { label: '6–10 months', months: 10 },
-  { label: '11–15 months', months: 15 },
-  { label: '16–20 months', months: 20 },
-  { label: '21+ months', months: 21 },
-];
-
-async function fetchExpOptions() {
-  try {
-    const res = await fetch('/skill-levels.json');
-    if (!res.ok) return null;
-    const json = await res.json();
-    const levels = (json.data || [])
-      .filter((r) => r['max-months'])
-      .map((r) => ({ maxMonths: Number(r['max-months']) }))
-      .sort((a, b) => a.maxMonths - b.maxMonths);
-    if (!levels.length) return null;
-    return levels.map(({ maxMonths }, i) => {
-      const from = i === 0 ? 1 : levels[i - 1].maxMonths + 1;
-      let label;
-      if (maxMonths >= 999) {
-        label = `${from}+ months`;
-      } else if (from === maxMonths) {
-        label = `${from} month${from === 1 ? '' : 's'}`;
-      } else {
-        label = `${from}–${maxMonths} months`;
-      }
-      return { label, months: maxMonths };
-    });
-  } catch {
-    return null;
-  }
-}
-
 async function fetchSkillList() {
   try {
-    const res = await fetch('/skill-levels.json?sheet=skills');
+    const res = await fetch('/skills.json');
     if (!res.ok) return [];
     const json = await res.json();
     return (json.data || []).map((r) => r.name).filter(Boolean);
@@ -84,10 +49,7 @@ function buildSelect(options, currentValue) {
 
 export default async function decorate(block) {
   const config = readBlockConfig(block);
-  const [user, skillList, fetchedExpOptions] = await Promise.all([
-    getUser(), fetchSkillList(), fetchExpOptions(),
-  ]);
-  const expOptions = fetchedExpOptions || EXP_OPTIONS_FALLBACK;
+  const [user, skillList] = await Promise.all([getUser(), fetchSkillList()]);
 
   const state = {
     mode: 'form',
@@ -114,7 +76,8 @@ export default async function decorate(block) {
 
   function validateInput() {
     if (!getInputSkillName()) throw new Error('Please select or type a skill.');
-    if (!state.input.months) throw new Error('Please select an experience range.');
+    const months = Number(state.input.months);
+    if (!months || months < 1 || months > 1000) throw new Error('Please enter experience between 1 and 1000 months.');
     if (!state.input.cert) throw new Error('Please select Yes or No for Certification.');
     if (state.input.cert === 'yes' && !state.input.certTitle.trim()) {
       throw new Error('Please enter the Title of Certificate.');
@@ -125,7 +88,7 @@ export default async function decorate(block) {
     validateInput();
     const entry = {
       skillName: getInputSkillName(),
-      months: state.input.months,
+      months: Number(state.input.months),
       cert: state.input.cert,
       certTitle: state.input.certTitle.trim(),
     };
@@ -257,13 +220,15 @@ export default async function decorate(block) {
 
     // ── Experience ──
     const expTd = document.createElement('td');
-    const expOpts = [
-      { value: '', label: 'Select…' },
-      ...expOptions.map(({ label, months }) => ({ value: String(months), label })),
-    ];
-    const expSel = buildSelect(expOpts, state.input.months || '');
-    expSel.addEventListener('change', (e) => { state.input.months = Number(e.target.value); });
-    expTd.append(expSel);
+    const expInput = document.createElement('input');
+    expInput.type = 'number';
+    expInput.className = 'entry-form__input';
+    expInput.placeholder = 'e.g. 12';
+    expInput.min = '1';
+    expInput.max = '1000';
+    expInput.value = state.input.months || '';
+    expInput.addEventListener('input', (e) => { state.input.months = e.target.value; });
+    expTd.append(expInput);
     tr.append(expTd);
 
     // ── Certification ──
@@ -338,8 +303,7 @@ export default async function decorate(block) {
 
   function renderDataRows() {
     return state.rows.map((s, i) => {
-      const expOpt = expOptions.find((o) => o.months === s.months);
-      const expLabel = expOpt ? expOpt.label : `${s.months} months`;
+      const expLabel = `${s.months} month${s.months === 1 ? '' : 's'}`;
 
       const tr = document.createElement('tr');
       tr.className = `entry-form__data-row${state.editingIndex === i ? ' entry-form__data-row--editing' : ''}`;
