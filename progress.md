@@ -14,18 +14,19 @@
 ### `entry-form` — `/` (index)
 **Status: Complete (live POST)**
 
-- Multi-skill submission form (skill name, experience in months, certification)
-- Add / remove skill entries dynamically
-- Form → Preview → Confirm → Success flow
-- Certificate upload (PNG, max 50 KB) with inline preview
-- PDF export via browser print (`openPrintPreview`)
-- Validation: required fields, month range (1–1000), cert file checks
+- Table-based UI: columns — Skill, Experience, Certification, Title of Certificate
+- Skill dropdown fetched dynamically from `/skill-levels.json?sheet=skills` (da.live authorable)
+  - "Other…" option reveals free-text input for custom skills not in the list
+- Experience dropdown: 5 month ranges (1–5, 6–10, 11–15, 16–20, 21+) matching `skill-levels` thresholds
+- Certification: simple Yes / No dropdown; Title of Certificate text input shown only when Yes
+- Inline Edit (✏) and Delete (×) per added row; editing row highlighted in amber
+- Add button commits row to table; Save button replaces row when editing
+- Form → Preview (full-page table, no popup) → Confirm → Success flow
 - POSTs directly to the confirmed backend endpoint via `submitSkillReport()`
-- `simulate-submit` flag removed — always hits real API
 - Proficiency level derived from experience months via `/skill-levels.json` (authorable)
-- Logout button to be added in the site header (removed from block)
-- Certificate upload "Choose File" button styled via `::file-selector-button` to match form design
 - `email` and `name` in POST payload currently empty strings — will be populated from IndexDB once SSO is wired
+- 40px top padding added to card so it clears the site header
+- Removed dependency on `skill-data.js` (mock catalog no longer used in form)
 
 ### `report-table` — `/employee-details`
 **Status: Complete (live API)**
@@ -81,6 +82,17 @@ Spreadsheet in da.live controlling the experience → proficiency level mapping.
 | 3 | Professional | 15 |
 | 4 | Expert | 20 |
 | 5 | Master | 999 |
+
+### `/skill-levels.json?sheet=skills`
+Second tab (`skills`) in the same `skill-levels` da.live spreadsheet. Controls the skill dropdown in `entry-form`. Authors add or remove skills without any code change.
+
+| name |
+|---|
+| HTML |
+| CSS |
+| JavaScript |
+| React |
+| … |
 
 ---
 
@@ -148,6 +160,6 @@ Both GET and POST use the same URL.
 |---|---|
 | SSO login (Adobe IMS) | Client ID in hand. Pattern confirmed: `imslib.min.js` from CDN, `window.adobeid` config, `onReady` → `isSignedInUser()` check. Wiring deferred to next session. |
 | IndexDB write after login | `setUser()` ready in `db.js` — to be called from IMS `onReady` after fetching profile |
-| Replace mock skill catalog | `skill-data.js` → live API once SSO provides user context |
+| Replace mock skill catalog | `skill-data.js` still used by `report-table` — entry-form no longer depends on it |
 | Auth headers on API calls | Pending confirmation — do GET/POST need a bearer token from SSO? |
 | `isManager` check | Need to define source of truth — IMS profile field or backend call |

@@ -47,14 +47,14 @@ Both GET and POST use the same URL, defined in `scripts/api.js`.
 ## Blocks
 
 ### `entry-form` — `/` (index)
-- Employee submits their skills
-- Fields: skill name, experience in months, certification (yes/no), certificate upload (PNG, max 50 KB)
-- Supports multiple skills per submission
-- Flow: Form → Preview → Confirm → Success
-- PDF export via browser print
+- Employee submits their skills via an inline table UI
+- Columns: Skill (dropdown from da.live), Experience (month-range dropdown), Certification (Yes/No), Title of Certificate (shown when Yes)
+- "Other…" option allows free-text entry for custom skills
+- Inline edit and delete per row before submission
+- Flow: Form → Preview (full-page table) → Confirm → Success
 - Proficiency level derived from authorable `/skill-levels.json`
+- Skill list fetched from `/skill-levels.json?sheet=skills` (authorable, same spreadsheet)
 - POSTs directly to backend via `submitSkillReport()`
-- Logout button to be added in the site header (not in the block)
 - `email` and `name` in POST payload currently empty — populated once SSO is wired
 
 ### `report-table` — `/employee-details`
@@ -87,7 +87,7 @@ Content at [da.live/#/vishnuadobe/skillmappingdashboard](https://da.live/#/vishn
 |---|---|---|
 | `index` | Document | Entry form page (entry-form block) |
 | `employee-details` | Document | Manager view page |
-| `skill-levels` | Spreadsheet | Experience → proficiency level thresholds |
+| `skill-levels` | Spreadsheet | Experience → proficiency level thresholds (`data` tab) + skill dropdown list (`skills` tab) |
 
 ---
 
@@ -97,6 +97,6 @@ Content at [da.live/#/vishnuadobe/skillmappingdashboard](https://da.live/#/vishn
 |---|---|
 | SSO login (Adobe IMS) | Client ID in hand — using `@identity/imsLib` (imslib.min.js from CDN). Wiring deferred. |
 | IndexDB write after login | `setUser()` ready in `db.js`, needs to be called from `auth.js` after IMS `onReady` |
-| Replace mock skill catalog | `skill-data.js` → live API once SSO provides user context |
+| Replace mock skill catalog | `skill-data.js` still used by `report-table` — entry-form now uses da.live `skills` sheet instead |
 | Auth headers on API calls | Pending — do GET/POST need a bearer token from SSO? |
 | `isManager` check | Need to define how to determine manager status post-login (IMS profile field or backend call) |

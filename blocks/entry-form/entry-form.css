@@ -11,6 +11,8 @@
   --entry-form-danger: #c2410c;
   --entry-form-shadow: 0 24px 48px rgb(15 23 42 / 10%);
   --entry-form-focus: 0 0 0 3px rgb(20 115 230 / 12%);
+
+  padding-top: 40px;
 }
 
 .entry-form .entry-form__wrapper {
