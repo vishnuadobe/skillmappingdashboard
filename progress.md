@@ -33,6 +33,7 @@
 - After a successful submit, fetches the employee's full record via `GET skillReport/employee/{employeeId}` and switches to a saved view
 - Displays a green success banner ("Skills submitted successfully.")
 - Shows all saved skills as an editable table — edit (✏) only; delete is not shown (backend merges, so server-side removal requires a delete endpoint)
+- Clicking edit reveals an inline input row (hidden otherwise in saved view) pre-filled with that skill's values; the row's own name is excluded from duplicate checking so it can be saved unchanged
 - Edit button is visually larger (34×34 px) than in the form view
 - **Save changes** button re-POSTs the edited table; does not re-fetch from server after saving so local edits (including deletions from the in-memory table) are preserved
 - **+ Add more skills** button resets to a blank form while retaining the saved skill name list for duplicate checking
@@ -57,7 +58,7 @@
 - `getSkillReport()` — GET all employees from `SKILL_REPORT_URL`
 - `getEmployeeSkillReport(employeeId)` — GET `skillReport/employee/{employeeId}`; used by entry-form saved view
 - `submitSkillReport(payload)` — POST to `SKILL_REPORT_URL`
-- `buildSkillsPayload(employeeId, email, name, skills)` — constructs POST body matching confirmed schema; cert `imageUrl` only included when present
+- `buildSkillsPayload(employeeId, email, name, skills)` — constructs POST body matching confirmed schema; cert `certificateImageUrl` only included when present
 - `getLevelFromExperienceMonths(months)` — async, fetches thresholds from `/skill-levels.json`, caches result
 
 ### `scripts/auth.js`
@@ -145,7 +146,7 @@ Separate `specializations` da.live spreadsheet. Controls the multi-select specia
         { "name": "HTML5", "proficiencyLevel": 1, "expInMonths": 12 },
         {
           "name": "TypeScript", "proficiencyLevel": 3, "expInMonths": 6,
-          "certification": { "name": "TypeScript Advanced", "imageUrl": "https://..." }
+          "certification": { "certificateName": "TypeScript Advanced", "certificateImageUrl": "https://..." }
         }
       ]
     }
@@ -189,7 +190,7 @@ Separate `specializations` da.live spreadsheet. Controls the multi-select specia
 }
 ```
 
-> Note: GET employee uses `certificateName` / `certificateImageUrl`; POST uses `name` / `imageUrl`. `mapServerSkillToRow()` in entry-form.js handles the mapping.
+> Note: Both GET employee and POST use `certificateName` / `certificateImageUrl`. `mapServerSkillToRow()` in entry-form.js still also accepts the legacy `name` / `imageUrl` shape for backward compatibility.
 
 ### POST — used by `entry-form`
 
@@ -203,7 +204,7 @@ Separate `specializations` da.live spreadsheet. Controls the multi-select specia
     { "name": "HTML5", "expInMonths": 12, "proficiencyLevel": 1 },
     {
       "name": "TypeScript", "expInMonths": 24, "proficiencyLevel": 3,
-      "certification": { "name": "TypeScript Advanced", "imageUrl": "https://..." }
+      "certification": { "certificateName": "TypeScript Advanced", "certificateImageUrl": "https://..." }
     }
   ]
 }

@@ -68,6 +68,7 @@ Defined in `scripts/api.js`.
 - Fetches employee record via `getEmployeeSkillReport(employeeId)` and displays all saved skills
 - Green success banner; subtext guides the user
 - Edit (✏) only — no delete button (backend merges, server-side removal needs a delete endpoint)
+- Clicking edit reveals an inline input row pre-filled with the skill's values (hidden otherwise in saved view); the edited row's own name is excluded from duplicate checking
 - Edit button is larger than in form mode (34×34 px)
 - **Save changes** — re-POSTs the current table; does not re-fetch from server (preserves local edits)
 - **+ Add more skills** — resets to blank form mode; saved skill names retained for duplicate checking

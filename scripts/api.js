@@ -61,9 +61,9 @@ export function buildSkillsPayload(employeeId, email, name, skillEntries) {
         proficiencyLevel: entry.proficiencyLevel,
       };
       if (entry.certification) {
-        skill.certification = { name: entry.certification.name };
+        skill.certification = { certificateName: entry.certification.name };
         if (entry.certification.imageUrl) {
-          skill.certification.imageUrl = entry.certification.imageUrl;
+          skill.certification.certificateImageUrl = entry.certification.imageUrl;
         }
       }
       return skill;
