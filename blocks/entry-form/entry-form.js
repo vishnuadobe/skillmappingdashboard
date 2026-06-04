@@ -2,8 +2,21 @@ import {
   buildSkillsPayload,
   getLevelFromExperienceMonths,
   submitSkillReport,
+  getEmployeeSkillReport,
 } from '../../scripts/api.js';
 import { getUser } from '../../scripts/db.js';
+
+function mapServerSkillToRow(skill) {
+  const certification = skill.certification || null;
+  return {
+    skillName: skill.name,
+    months: Number(skill.expInMonths) || 0,
+    specializations: Array.isArray(skill.specializations) ? skill.specializations : [],
+    cert: certification ? 'yes' : 'no',
+    certTitle: certification?.certificateName || certification?.name || '',
+    certImageUrl: certification?.certificateImageUrl || certification?.imageUrl || '',
+  };
+}
 
 async function fetchSkillList() {
   try {
@@ -110,7 +123,7 @@ export default async function decorate(block) {
   ]);
 
   const blankInput = () => ({
-    skill: '', skillOther: '', months: 0, specializations: [], cert: '', certTitle: '',
+    skill: '', skillOther: '', months: 0, specializations: [], cert: '', certTitle: '', certImageUrl: '',
   });
 
   const state = {
@@ -157,6 +170,7 @@ export default async function decorate(block) {
       specializations: [...state.input.specializations],
       cert: state.input.cert,
       certTitle: state.input.certTitle.trim(),
+      certImageUrl: state.input.certImageUrl,
     };
     if (state.editingIndex >= 0) {
       state.rows[state.editingIndex] = entry;
@@ -191,6 +205,7 @@ export default async function decorate(block) {
       specializations: [...(s.specializations || [])],
       cert: s.cert,
       certTitle: s.certTitle,
+      certImageUrl: s.certImageUrl || '',
     };
     state.editingIndex = i;
     state.message = '';
@@ -210,10 +225,21 @@ export default async function decorate(block) {
       }
       if (s.cert === 'yes') {
         entry.certification = { name: s.certTitle };
+        if (s.certImageUrl) entry.certification.imageUrl = s.certImageUrl;
       }
       return entry;
     }));
     return buildSkillsPayload(state.employeeId, state.email, state.name, skillsData);
+  }
+
+  async function loadSavedRows() {
+    const res = await getEmployeeSkillReport(state.employeeId);
+    const data = res?.data || {};
+    if (data.email) state.email = data.email;
+    if (data.name) state.name = data.name;
+    state.rows = (data.skills || []).map(mapServerSkillToRow);
+    state.editingIndex = -1;
+    state.input = blankInput();
   }
 
   async function handleSubmit() {
@@ -224,7 +250,13 @@ export default async function decorate(block) {
     try {
       const payload = await buildPayload();
       await submitSkillReport(payload);
-      state.mode = 'success';
+      try {
+        await loadSavedRows();
+      } catch (loadErr) {
+        // eslint-disable-next-line no-console
+        console.error('Could not reload saved skills:', loadErr);
+      }
+      state.mode = 'saved';
       state.message = 'Submission saved successfully.';
       state.messageType = 'success';
     } catch (err) {
@@ -518,27 +550,34 @@ export default async function decorate(block) {
     wrapper.append(footer);
   }
 
-  function renderSuccess(wrapper) {
-    const heading = createElement('h3', 'entry-form__preview-heading', 'Skills submitted successfully!');
-    const sub = createElement('p', 'entry-form__success-sub', 'Your skills have been recorded.');
-    wrapper.append(heading, sub);
+  function renderSaved(wrapper) {
+    const banner = createElement('div', 'entry-form__saved-banner');
+    banner.append(
+      createElement('span', 'entry-form__saved-icon', '✓'),
+      createElement('span', 'entry-form__saved-text', 'Skills submitted successfully.'),
+    );
+    wrapper.append(banner);
 
-    wrapper.append(renderTable(false));
+    wrapper.append(createElement(
+      'p',
+      'entry-form__saved-sub',
+      'Your saved skills are below. Edit or add any entry, then click Save changes.',
+    ));
 
-    const actions = createElement('div', 'entry-form__actions');
-    const addMoreBtn = createElement('button', 'entry-form__button entry-form__button--primary', '+ Add More Skills');
-    addMoreBtn.type = 'button';
-    addMoreBtn.addEventListener('click', () => {
-      state.mode = 'form';
-      state.message = '';
-      state.messageType = '';
-      state.rows = [];
-      state.editingIndex = -1;
-      state.input = blankInput();
-      render();
-    });
-    actions.append(addMoreBtn);
-    wrapper.append(actions);
+    renderMessage(wrapper);
+    wrapper.append(renderTable(true));
+
+    const footer = createElement('div', 'entry-form__form-footer');
+    const saveBtn = createElement(
+      'button',
+      'entry-form__button entry-form__button--primary',
+      state.busy ? 'Saving…' : 'Save changes',
+    );
+    saveBtn.type = 'button';
+    saveBtn.disabled = state.rows.length === 0 || state.busy;
+    saveBtn.addEventListener('click', handleSubmit);
+    footer.append(saveBtn);
+    wrapper.append(footer);
   }
 
   render = function renderEntryForm() {
@@ -555,8 +594,8 @@ export default async function decorate(block) {
     wrapper.append(header);
 
     const body = createElement('div', 'entry-form__body');
-    if (state.mode === 'success') {
-      renderSuccess(body);
+    if (state.mode === 'saved') {
+      renderSaved(body);
     } else {
       renderForm(body);
     }

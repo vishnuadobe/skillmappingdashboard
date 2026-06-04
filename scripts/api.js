@@ -1,4 +1,5 @@
-const SKILL_REPORT_URL = 'https://293924-uiprojectdashboard-stage.adobeio-static.net/api/v1/web/uiprojectdashboard/skillReport';
+const API_BASE_URL = 'https://293924-uiprojectdashboard-stage.adobeio-static.net/api/v1/web/uiprojectdashboard';
+const SKILL_REPORT_URL = `${API_BASE_URL}/skillReport`;
 
 let levelsCache = null;
 
@@ -60,10 +61,10 @@ export function buildSkillsPayload(employeeId, email, name, skillEntries) {
         proficiencyLevel: entry.proficiencyLevel,
       };
       if (entry.certification) {
-        skill.certification = {
-          name: entry.certification.name,
-          imageUrl: entry.certification.imageUrl,
-        };
+        skill.certification = { name: entry.certification.name };
+        if (entry.certification.imageUrl) {
+          skill.certification.imageUrl = entry.certification.imageUrl;
+        }
       }
       return skill;
     }),
@@ -72,6 +73,10 @@ export function buildSkillsPayload(employeeId, email, name, skillEntries) {
 
 export async function getSkillReport() {
   return requestJson(SKILL_REPORT_URL);
+}
+
+export async function getEmployeeSkillReport(employeeId) {
+  return requestJson(`${SKILL_REPORT_URL}/employee/${encodeURIComponent(employeeId)}`);
 }
 
 export async function submitSkillReport(payload) {

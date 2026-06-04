@@ -441,16 +441,6 @@
   color: #9ca3af;
 }
 
-/* ── Action row (preview/success) ── */
-.entry-form .entry-form__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding-top: 20px;
-  border-top: 1px solid var(--entry-form-border);
-  margin-top: 4px;
-}
-
 /* ── Shared button ── */
 .entry-form .entry-form__button {
   min-height: 46px;
@@ -519,16 +509,34 @@
   color: var(--entry-form-success);
 }
 
-/* ── Preview heading ── */
-.entry-form .entry-form__preview-heading {
-  margin: 0 0 20px;
-  color: var(--entry-form-text);
-  font-size: 1.15rem;
-  font-weight: 800;
+/* ── Saved view ── */
+.entry-form .entry-form__saved-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: #ecfdf5;
+  color: var(--entry-form-success);
+  font-weight: 700;
+  font-size: 0.95rem;
 }
 
-/* ── Success ── */
-.entry-form .entry-form__success-sub {
+.entry-form .entry-form__saved-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--entry-form-success);
+  color: #fff;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.entry-form .entry-form__saved-sub {
   margin: 0 0 20px;
   color: var(--entry-form-text-muted);
   font-size: 0.9rem;
