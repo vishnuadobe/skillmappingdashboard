@@ -23,8 +23,11 @@ Open app (index — entry form lives here)
 ├── SSO login via Adobe IMS (not wired yet — waiting on credentials)
 │   └── return profile → setUser() in db.js
 │
-└── Fill form → POST skill report → Backend API
-
+├── Fill form → POST skill report → Backend API
+│   └── Success → fetch GET employee/{id} → Saved view
+│       ├── Edit any saved skill → Save changes → re-POST
+│       └── + Add more skills → back to blank form
+│
 Logout (either page) → clearUser() → redirect to /
 ```
 
@@ -35,27 +38,39 @@ Logout (either page) → clearUser() → redirect to /
 **Base URL (staging):**
 `https://293924-uiprojectdashboard-stage.adobeio-static.net/api/v1/web/uiprojectdashboard/skillReport`
 
-Both GET and POST use the same URL, defined in `scripts/api.js`.
+Defined in `scripts/api.js`.
 
-| Method | Function | Used by |
-|---|---|---|
-| GET | `getSkillReport()` | `report-table` block |
-| POST | `submitSkillReport(payload)` | `entry-form` block |
+| Method | Endpoint | Function | Used by |
+|---|---|---|---|
+| GET | `/skillReport` | `getSkillReport()` | `report-table` block |
+| GET | `/skillReport/employee/{employeeId}` | `getEmployeeSkillReport(employeeId)` | `entry-form` saved view |
+| POST | `/skillReport` | `submitSkillReport(payload)` | `entry-form` block |
+
+> Backend **merges/appends** on POST — does not replace the full skill set.
 
 ---
 
 ## Blocks
 
 ### `entry-form` — `/` (index)
-- Employee submits their skills via an inline table UI
+
+**Form mode** (initial state):
+- Employee submits skills via an inline table UI
 - Columns: Skill, Experience in Months (mandatory), Specialization (optional multi-select), Certification (Yes/No), Title of Certificate (shown when Yes)
-- Skill dropdown from `/skills.json` (da.live authorable); "Other…" option allows free-text entry for custom skills
-- Specialization is a custom multi-select dropdown sourced from `/specializations.json` (da.live `specializations` sheet); multiple options can be chosen per skill row
-- Inline edit and delete per row before submission
-- Flow: Form → Submit → Success (no intermediate preview step)
+- Skill dropdown from `/skills.json` (da.live authorable); "Other…" allows free-text custom skills
+- Specialization multi-select sourced from `/specializations.json`; multiple options per skill row
+- Inline edit (✏) and delete (×) per row before submission
+- Duplicate detection: case-insensitive + version-normalised (`HTML` and `HTML5` are treated as the same skill); also checks against already-saved skills
 - Proficiency level derived from authorable `/skill-levels.json`
 - POSTs directly to backend via `submitSkillReport()`; `specializations` array included per skill entry when present
-- `email` and `name` in POST payload currently empty — populated once SSO is wired
+
+**Saved view** (post-submit):
+- Fetches employee record via `getEmployeeSkillReport(employeeId)` and displays all saved skills
+- Green success banner; subtext guides the user
+- Edit (✏) only — no delete button (backend merges, server-side removal needs a delete endpoint)
+- Edit button is larger than in form mode (34×34 px)
+- **Save changes** — re-POSTs the current table; does not re-fetch from server (preserves local edits)
+- **+ Add more skills** — resets to blank form mode; saved skill names retained for duplicate checking
 
 ### `report-table` — `/employee-details`
 - Manager-facing skill matrix (rows = employees, columns = skills)
@@ -71,11 +86,11 @@ Both GET and POST use the same URL, defined in `scripts/api.js`.
 
 | File | Purpose |
 |---|---|
-| `scripts/api.js` | `getSkillReport()`, `submitSkillReport()`, `buildSkillsPayload()`, async `getLevelFromExperienceMonths()` |
+| `scripts/api.js` | `getSkillReport()`, `getEmployeeSkillReport(id)`, `submitSkillReport()`, `buildSkillsPayload()`, async `getLevelFromExperienceMonths()` |
 | `scripts/auth.js` | `logout()` (default export) — clears IndexDB and redirects to `/`. SSO stub to be added. |
 | `scripts/db.js` | IndexDB — `setUser`, `getUser`, `clearUser` for `{ name, email, ldap, isManager }` |
-| `scripts/skill-data.js` | Mock data — to be replaced once SSO provides user context |
-| `scripts/scripts.js` | AEM page decoration entry point — no auth routing on index (entry form is the index page) |
+| `scripts/skill-data.js` | Mock data — still used by `report-table`; to be replaced once SSO provides user context |
+| `scripts/scripts.js` | AEM page decoration entry point — no auth routing on index |
 
 ---
 
@@ -99,6 +114,7 @@ Content at [da.live/#/vishnuadobe/skillmappingdashboard](https://da.live/#/vishn
 |---|---|
 | SSO login (Adobe IMS) | Client ID in hand — using `@identity/imsLib` (imslib.min.js from CDN). Wiring deferred. |
 | IndexDB write after login | `setUser()` ready in `db.js`, needs to be called from `auth.js` after IMS `onReady` |
-| Replace mock skill catalog | `skill-data.js` still used by `report-table` — entry-form now uses da.live `skills` sheet instead |
+| Replace mock skill catalog | `skill-data.js` still used by `report-table` — entry-form now uses da.live `skills` sheet |
 | Auth headers on API calls | Pending — do GET/POST need a bearer token from SSO? |
-| `isManager` check | Need to define how to determine manager status post-login (IMS profile field or backend call) |
+| `isManager` check | Source of truth undecided (IMS profile field vs. backend call) |
+| Server-side skill deletion | Backend merges only; need a delete endpoint or replace semantics on POST |

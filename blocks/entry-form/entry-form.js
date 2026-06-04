@@ -191,10 +191,15 @@ export default async function decorate(block) {
       throw new Error('Please enter the Title of Certificate.');
     }
     const normalized = normalizeSkillName(skillName);
+    const editingName = state.editingIndex >= 0
+      ? normalizeSkillName(state.rows[state.editingIndex].skillName)
+      : null;
     const inCurrentRows = state.rows.some(
       (r, i) => normalizeSkillName(r.skillName) === normalized && i !== state.editingIndex,
     );
-    const inSavedRows = state.savedSkillNames.some((n) => normalizeSkillName(n) === normalized);
+    const inSavedRows = state.savedSkillNames.some(
+      (n) => normalizeSkillName(n) === normalized && normalizeSkillName(n) !== editingName,
+    );
     if (inCurrentRows || inSavedRows) throw new Error(`"${skillName}" has already been added.`);
   }
 
@@ -611,7 +616,7 @@ export default async function decorate(block) {
     ));
 
     if (state.messageType === 'error') renderMessage(wrapper);
-    wrapper.append(renderTable(true, false, false));
+    wrapper.append(renderTable(true, state.editingIndex >= 0, false));
 
     const footer = createElement('div', 'entry-form__form-footer');
 
