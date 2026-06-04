@@ -370,30 +370,31 @@ export default async function decorate(block) {
       { value: 'other', label: 'Other…' },
     ];
     const skillSel = buildSelect(skillOpts, state.input.skill);
+    skillSel.style.display = state.input.skill === 'other' ? 'none' : '';
 
-    const otherWrap = createElement('div', 'entry-form__other-wrap');
-    otherWrap.style.display = state.input.skill === 'other' ? 'block' : 'none';
     const otherInput = document.createElement('input');
     otherInput.type = 'text';
-    otherInput.className = 'entry-form__input entry-form__other-input';
+    otherInput.className = 'entry-form__input';
     otherInput.placeholder = 'Type your skill…';
     otherInput.value = state.input.skillOther;
+    otherInput.style.display = state.input.skill === 'other' ? '' : 'none';
     otherInput.addEventListener('input', (e) => { state.input.skillOther = e.target.value; });
-    otherWrap.append(otherInput);
 
     skillSel.addEventListener('change', (e) => {
       state.input.skill = e.target.value;
       if (e.target.value !== 'other') {
         state.input.skillOther = '';
-        otherWrap.style.display = 'none';
+        skillSel.style.display = '';
+        otherInput.style.display = 'none';
         otherInput.value = '';
       } else {
-        otherWrap.style.display = 'block';
+        skillSel.style.display = 'none';
+        otherInput.style.display = '';
         otherInput.focus();
       }
     });
 
-    skillTd.append(skillSel, otherWrap);
+    skillTd.append(skillSel, otherInput);
     tr.append(skillTd);
 
     // ── Experience ──
@@ -411,6 +412,7 @@ export default async function decorate(block) {
 
     // ── Specialization (optional, multi-select) ──
     const specTd = document.createElement('td');
+    specTd.className = 'entry-form__spec-td';
     specTd.append(buildMultiSelect(
       specializationList,
       state.input.specializations,
