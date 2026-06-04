@@ -62,6 +62,8 @@ function createElement(tag, className, text) {
   return el;
 }
 
+const multiPanelCleanups = new WeakMap();
+
 function buildSelect(options, currentValue) {
   const sel = document.createElement('select');
   sel.className = 'entry-form__select';
@@ -85,12 +87,21 @@ function buildMultiSelect(options, initialValues, onChange) {
   trigger.type = 'button';
   trigger.className = 'entry-form__multi-trigger';
 
+  // Portal panel to body so it escapes any overflow:auto ancestor
   const panel = document.createElement('div');
   panel.className = 'entry-form__multi-panel';
   panel.hidden = true;
+  document.body.append(panel);
 
   function updateTrigger() {
     trigger.textContent = current.length ? current.join(', ') : 'Select…';
+  }
+
+  function positionPanel() {
+    const rect = trigger.getBoundingClientRect();
+    panel.style.top = `${rect.bottom + 4}px`;
+    panel.style.left = `${rect.left}px`;
+    panel.style.width = `${rect.width}px`;
   }
 
   options.forEach((opt) => {
@@ -109,14 +120,32 @@ function buildMultiSelect(options, initialValues, onChange) {
     panel.append(label);
   });
 
-  trigger.addEventListener('click', () => { panel.hidden = !panel.hidden; });
+  const closeOnOutside = (e) => {
+    if (!wrap.contains(e.target) && !panel.contains(e.target)) {
+      panel.hidden = true;
+      document.removeEventListener('click', closeOnOutside);
+    }
+  };
 
-  wrap.addEventListener('focusout', (e) => {
-    if (!wrap.contains(e.relatedTarget)) panel.hidden = true;
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (panel.hidden) {
+      positionPanel();
+      panel.hidden = false;
+      document.addEventListener('click', closeOnOutside);
+    } else {
+      panel.hidden = true;
+      document.removeEventListener('click', closeOnOutside);
+    }
+  });
+
+  multiPanelCleanups.set(panel, () => {
+    document.removeEventListener('click', closeOnOutside);
+    panel.remove();
   });
 
   updateTrigger();
-  wrap.append(trigger, panel);
+  wrap.append(trigger);
   return wrap;
 }
 
@@ -613,6 +642,7 @@ export default async function decorate(block) {
   }
 
   render = function renderEntryForm() {
+    document.querySelectorAll('.entry-form__multi-panel').forEach((p) => multiPanelCleanups.get(p)?.());
     block.textContent = '';
     const wrapper = createElement('div', 'entry-form__wrapper');
 
@@ -621,8 +651,10 @@ export default async function decorate(block) {
     header.append(
       createElement('span', 'entry-form__heading-accent'),
       createElement('h2', 'entry-form__heading', displayName),
-      createElement('p', 'entry-form__heading-sub', config.heading || 'Submit your skills'),
     );
+    if (state.mode !== 'success') {
+      header.append(createElement('p', 'entry-form__heading-sub', config.heading || 'Submit your skills'));
+    }
     wrapper.append(header);
 
     const body = createElement('div', 'entry-form__body');

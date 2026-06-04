@@ -173,7 +173,7 @@
 
 /* ── Multi-select (specialization) ── */
 .entry-form .entry-form__multi-select {
-  position: relative;
+  display: block;
 }
 
 .entry-form .entry-form__multi-trigger {
@@ -201,12 +201,9 @@
   box-shadow: var(--entry-form-focus);
 }
 
-.entry-form .entry-form__multi-panel {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 10;
+.entry-form__multi-panel {
+  position: fixed;
+  z-index: 1000;
   max-height: 200px;
   overflow-y: auto;
   background: #fff;
@@ -216,11 +213,11 @@
   padding: 4px 0;
 }
 
-.entry-form .entry-form__multi-panel[hidden] {
+.entry-form__multi-panel[hidden] {
   display: none;
 }
 
-.entry-form .entry-form__multi-option {
+.entry-form__multi-option {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -230,11 +227,11 @@
   transition: background 120ms ease;
 }
 
-.entry-form .entry-form__multi-option:hover {
-  background: var(--entry-form-surface-alt);
+.entry-form__multi-option:hover {
+  background: #f8fbff;
 }
 
-.entry-form .entry-form__multi-option input[type='checkbox'] {
+.entry-form__multi-option input[type='checkbox'] {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
