@@ -41,7 +41,12 @@ async function fetchSpecializations() {
 }
 
 function normalizeSkillName(name) {
-  return name.trim().toLowerCase().replace(/[\s.]*\d+(\.\d+)*$/, '');
+  // Strip a trailing version token so "HTML" and "HTML5" match, but keep it when
+  // doing so would leave too short a stem — so names where the trailing digits are
+  // part of the identity (e.g. "ES6", "S3") aren't collapsed away.
+  const base = name.trim().toLowerCase();
+  const stripped = base.replace(/[\s.]*\d+(\.\d+)*$/, '');
+  return stripped.length >= 3 ? stripped : base;
 }
 
 function readBlockConfig(block) {
@@ -257,6 +262,14 @@ export default async function decorate(block) {
     render();
   }
 
+  function cancelEdit() {
+    state.editingIndex = -1;
+    state.input = blankInput();
+    state.message = '';
+    state.messageType = '';
+    render();
+  }
+
   async function buildPayload() {
     const skillsData = await Promise.all(state.rows.map(async (s) => {
       const level = await getLevelFromExperienceMonths(s.months);
@@ -436,14 +449,11 @@ export default async function decorate(block) {
     titleTd.append(certTitleWrap, dashWrap);
     tr.append(titleTd);
 
-    // ── Add / Save button ──
+    // ── Add / Save (+ Cancel) buttons ──
     const addTd = document.createElement('td');
     addTd.className = 'entry-form__action-cell';
-    const addBtn = createElement(
-      'button',
-      'entry-form__add-btn',
-      state.editingIndex >= 0 ? 'Save' : '+ Add',
-    );
+    const isEditing = state.editingIndex >= 0;
+    const addBtn = createElement('button', 'entry-form__add-btn', isEditing ? 'Save' : '+ Add');
     addBtn.type = 'button';
     addBtn.addEventListener('click', () => {
       try {
@@ -454,7 +464,16 @@ export default async function decorate(block) {
         render();
       }
     });
-    addTd.append(addBtn);
+    if (isEditing) {
+      const editActions = createElement('div', 'entry-form__edit-actions');
+      const cancelBtn = createElement('button', 'entry-form__cancel-btn', 'Cancel');
+      cancelBtn.type = 'button';
+      cancelBtn.addEventListener('click', cancelEdit);
+      editActions.append(addBtn, cancelBtn);
+      addTd.append(editActions);
+    } else {
+      addTd.append(addBtn);
+    }
     tr.append(addTd);
 
     return tr;
@@ -462,6 +481,9 @@ export default async function decorate(block) {
 
   function renderDataRows(showActions = true, showDelete = showActions) {
     return state.rows.map((s, i) => {
+      // Editing happens inline — replace the data row with the input row
+      if (showActions && state.editingIndex === i) return renderInputRow();
+
       const expLabel = `${s.months} month${s.months === 1 ? '' : 's'}`;
 
       const tr = document.createElement('tr');
@@ -574,7 +596,7 @@ export default async function decorate(block) {
     renderDataRows(showActions, showDelete).forEach((tr) => tbody.append(tr));
     table.append(tbody);
 
-    if (showInputRow) {
+    if (showInputRow && state.editingIndex < 0) {
       const tfoot = document.createElement('tfoot');
       tfoot.append(renderInputRow());
       table.append(tfoot);
@@ -616,7 +638,7 @@ export default async function decorate(block) {
     ));
 
     if (state.messageType === 'error') renderMessage(wrapper);
-    wrapper.append(renderTable(true, state.editingIndex >= 0, false));
+    wrapper.append(renderTable(true, false, false));
 
     const footer = createElement('div', 'entry-form__form-footer');
 

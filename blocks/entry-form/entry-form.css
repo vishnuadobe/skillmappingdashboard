@@ -426,6 +426,33 @@
   border-color: var(--entry-form-accent-strong);
 }
 
+/* ── Inline edit actions (Save + Cancel) ── */
+.entry-form .entry-form__edit-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.entry-form .entry-form__cancel-btn {
+  height: 34px;
+  padding: 0 12px;
+  border: 1.5px solid var(--entry-form-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--entry-form-text-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+
+.entry-form .entry-form__cancel-btn:hover {
+  border-color: var(--entry-form-text-muted);
+  color: var(--entry-form-text);
+}
+
 /* ── Form footer ── */
 .entry-form .entry-form__form-footer {
   display: flex;
