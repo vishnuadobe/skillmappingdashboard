@@ -16,6 +16,17 @@ async function fetchSkillList() {
   }
 }
 
+async function fetchSpecializations() {
+  try {
+    const res = await fetch('/specializations.json');
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.data || []).map((r) => r.name).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 function readBlockConfig(block) {
   return [...block.children].reduce((config, row) => {
     const cells = [...row.children];
@@ -47,9 +58,60 @@ function buildSelect(options, currentValue) {
   return sel;
 }
 
+function buildMultiSelect(options, initialValues, onChange) {
+  let current = [...initialValues];
+
+  const wrap = document.createElement('div');
+  wrap.className = 'entry-form__multi-select';
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'entry-form__multi-trigger';
+
+  const panel = document.createElement('div');
+  panel.className = 'entry-form__multi-panel';
+  panel.hidden = true;
+
+  function updateTrigger() {
+    trigger.textContent = current.length ? current.join(', ') : 'Select…';
+  }
+
+  options.forEach((opt) => {
+    const label = document.createElement('label');
+    label.className = 'entry-form__multi-option';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = opt;
+    cb.checked = current.includes(opt);
+    cb.addEventListener('change', () => {
+      current = cb.checked ? [...current, opt] : current.filter((v) => v !== opt);
+      updateTrigger();
+      onChange(current);
+    });
+    label.append(cb, document.createTextNode(` ${opt}`));
+    panel.append(label);
+  });
+
+  trigger.addEventListener('click', () => { panel.hidden = !panel.hidden; });
+
+  wrap.addEventListener('focusout', (e) => {
+    if (!wrap.contains(e.relatedTarget)) panel.hidden = true;
+  });
+
+  updateTrigger();
+  wrap.append(trigger, panel);
+  return wrap;
+}
+
 export default async function decorate(block) {
   const config = readBlockConfig(block);
-  const [user, skillList] = await Promise.all([getUser(), fetchSkillList()]);
+  const [user, skillList, specializationList] = await Promise.all([
+    getUser(), fetchSkillList(), fetchSpecializations(),
+  ]);
+
+  const blankInput = () => ({
+    skill: '', skillOther: '', months: 0, specializations: [], cert: '', certTitle: '',
+  });
 
   const state = {
     mode: 'form',
@@ -57,13 +119,11 @@ export default async function decorate(block) {
     message: '',
     messageType: '',
     employeeId: user?.ldap || config['employee-id'] || 'robinvarshn',
-    email: user?.email || '',
-    name: user?.name || '',
+    email: user?.email || `${user?.ldap || config['employee-id'] || 'robinvarshn'}@adobe.com`,
+    name: user?.name || user?.ldap || config['employee-id'] || 'robinvarshn',
     rows: [],
     editingIndex: -1,
-    input: {
-      skill: '', skillOther: '', months: 0, cert: '', certTitle: '',
-    },
+    input: blankInput(),
   };
 
   let render;
@@ -75,13 +135,18 @@ export default async function decorate(block) {
   }
 
   function validateInput() {
-    if (!getInputSkillName()) throw new Error('Please select or type a skill.');
+    const skillName = getInputSkillName();
+    if (!skillName) throw new Error('Please select or type a skill.');
     const months = Number(state.input.months);
     if (!months || months < 1 || months > 1000) throw new Error('Please enter experience between 1 and 1000 months.');
     if (!state.input.cert) throw new Error('Please select Yes or No for Certification.');
     if (state.input.cert === 'yes' && !state.input.certTitle.trim()) {
       throw new Error('Please enter the Title of Certificate.');
     }
+    const isDuplicate = state.rows.some(
+      (r, i) => r.skillName.toLowerCase() === skillName.toLowerCase() && i !== state.editingIndex,
+    );
+    if (isDuplicate) throw new Error(`"${skillName}" has already been added.`);
   }
 
   function commitRow() {
@@ -89,6 +154,7 @@ export default async function decorate(block) {
     const entry = {
       skillName: getInputSkillName(),
       months: Number(state.input.months),
+      specializations: [...state.input.specializations],
       cert: state.input.cert,
       certTitle: state.input.certTitle.trim(),
     };
@@ -98,11 +164,20 @@ export default async function decorate(block) {
     } else {
       state.rows.push(entry);
     }
-    state.input = {
-      skill: '', skillOther: '', months: 0, cert: '', certTitle: '',
-    };
+    state.input = blankInput();
     state.message = '';
     state.messageType = '';
+    render();
+  }
+
+  function deleteRow(i) {
+    state.rows.splice(i, 1);
+    if (state.editingIndex === i) {
+      state.editingIndex = -1;
+      state.input = blankInput();
+    } else if (state.editingIndex > i) {
+      state.editingIndex -= 1;
+    }
     render();
   }
 
@@ -113,24 +188,12 @@ export default async function decorate(block) {
       skill: isPreset ? s.skillName : 'other',
       skillOther: isPreset ? '' : s.skillName,
       months: s.months,
+      specializations: [...(s.specializations || [])],
       cert: s.cert,
       certTitle: s.certTitle,
     };
     state.editingIndex = i;
     state.message = '';
-    render();
-  }
-
-  function deleteRow(i) {
-    state.rows.splice(i, 1);
-    if (state.editingIndex === i) {
-      state.editingIndex = -1;
-      state.input = {
-        skill: '', skillOther: '', months: 0, cert: '', certTitle: '',
-      };
-    } else if (state.editingIndex > i) {
-      state.editingIndex -= 1;
-    }
     render();
   }
 
@@ -142,8 +205,11 @@ export default async function decorate(block) {
         expInMonths: s.months,
         proficiencyLevel: level?.level || 1,
       };
+      if (s.specializations && s.specializations.length) {
+        entry.specializations = s.specializations;
+      }
       if (s.cert === 'yes') {
-        entry.certification = { name: s.certTitle, imageUrl: '' };
+        entry.certification = { name: s.certTitle };
       }
       return entry;
     }));
@@ -161,8 +227,11 @@ export default async function decorate(block) {
       state.mode = 'success';
       state.message = 'Submission saved successfully.';
       state.messageType = 'success';
-    } catch {
-      state.message = 'Submission failed. Please try again.';
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Submission failed:', err);
+      const detail = err.status ? ` (HTTP ${err.status})` : '';
+      state.message = `Submission failed${detail}. Check the browser console for details.`;
       state.messageType = 'error';
     } finally {
       state.busy = false;
@@ -222,13 +291,22 @@ export default async function decorate(block) {
     const expInput = document.createElement('input');
     expInput.type = 'number';
     expInput.className = 'entry-form__input';
-    expInput.placeholder = 'e.g. 12';
+    expInput.placeholder = 'months';
     expInput.min = '1';
     expInput.max = '1000';
     expInput.value = state.input.months || '';
     expInput.addEventListener('input', (e) => { state.input.months = e.target.value; });
     expTd.append(expInput);
     tr.append(expTd);
+
+    // ── Specialization (optional, multi-select) ──
+    const specTd = document.createElement('td');
+    specTd.append(buildMultiSelect(
+      specializationList,
+      state.input.specializations,
+      (vals) => { state.input.specializations = vals; },
+    ));
+    tr.append(specTd);
 
     // ── Certification ──
     const certTd = document.createElement('td');
@@ -252,28 +330,28 @@ export default async function decorate(block) {
     titleInput.addEventListener('input', (e) => { state.input.certTitle = e.target.value; });
     certTitleWrap.append(titleInput);
 
-    if (state.input.cert === 'yes') {
-      certTitleWrap.style.display = 'block';
-      certDash.style.display = 'none';
-    } else {
-      certTitleWrap.style.display = 'none';
-    }
+    const dashWrap = document.createElement('div');
+    dashWrap.className = 'entry-form__dash-center';
+    dashWrap.append(certDash);
+
+    certTitleWrap.style.display = state.input.cert === 'yes' ? 'block' : 'none';
+    dashWrap.style.display = state.input.cert === 'yes' ? 'none' : '';
 
     certSel.addEventListener('change', (e) => {
       state.input.cert = e.target.value;
       if (e.target.value === 'yes') {
         certTitleWrap.style.display = 'block';
-        certDash.style.display = 'none';
+        dashWrap.style.display = 'none';
         titleInput.focus();
       } else {
         state.input.certTitle = '';
         titleInput.value = '';
         certTitleWrap.style.display = 'none';
-        certDash.style.display = '';
+        dashWrap.style.display = '';
       }
     });
 
-    titleTd.append(certTitleWrap, certDash);
+    titleTd.append(certTitleWrap, dashWrap);
     tr.append(titleTd);
 
     // ── Add / Save button ──
@@ -300,7 +378,7 @@ export default async function decorate(block) {
     return tr;
   }
 
-  function renderDataRows() {
+  function renderDataRows(showActions = true) {
     return state.rows.map((s, i) => {
       const expLabel = `${s.months} month${s.months === 1 ? '' : 's'}`;
 
@@ -311,6 +389,16 @@ export default async function decorate(block) {
       skillTd.append(createElement('span', 'entry-form__skill-chip', s.skillName));
 
       const expTd = createElement('td', 'entry-form__exp-cell', expLabel);
+
+      const specTd = document.createElement('td');
+      const slist = s.specializations || [];
+      if (slist.length) {
+        const chipsWrap = createElement('div', 'entry-form__spec-chips');
+        slist.forEach((sp) => chipsWrap.append(createElement('span', 'entry-form__spec-chip', sp)));
+        specTd.append(chipsWrap);
+      } else {
+        specTd.append(createElement('span', 'entry-form__dash', '—'));
+      }
 
       const certTd = document.createElement('td');
       certTd.append(createElement(
@@ -328,22 +416,60 @@ export default async function decorate(block) {
 
       const actionTd = document.createElement('td');
       actionTd.className = 'entry-form__action-cell';
-      const actionsWrap = createElement('div', 'entry-form__row-actions');
 
-      const editBtn = createElement('button', 'entry-form__icon-btn entry-form__icon-btn--edit', '✏');
+      const editBtn = document.createElement('button');
+      editBtn.className = 'entry-form__icon-btn entry-form__icon-btn--edit';
       editBtn.type = 'button';
+      editBtn.title = 'Edit';
       editBtn.setAttribute('aria-label', `Edit ${s.skillName}`);
+      const editSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      editSvg.setAttribute('width', '13');
+      editSvg.setAttribute('height', '13');
+      editSvg.setAttribute('viewBox', '0 0 24 24');
+      editSvg.setAttribute('fill', 'none');
+      editSvg.setAttribute('stroke', 'currentColor');
+      editSvg.setAttribute('stroke-width', '2');
+      editSvg.setAttribute('stroke-linecap', 'round');
+      editSvg.setAttribute('stroke-linejoin', 'round');
+      editSvg.setAttribute('aria-hidden', 'true');
+      const editPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      editPath.setAttribute('d', 'M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z');
+      editSvg.append(editPath);
+      editBtn.append(editSvg);
       editBtn.addEventListener('click', () => editRow(i));
 
-      const delBtn = createElement('button', 'entry-form__icon-btn entry-form__icon-btn--del', '×');
+      const delBtn = document.createElement('button');
+      delBtn.className = 'entry-form__icon-btn entry-form__icon-btn--del';
       delBtn.type = 'button';
-      delBtn.setAttribute('aria-label', `Remove ${s.skillName}`);
+      delBtn.title = 'Delete';
+      delBtn.setAttribute('aria-label', `Delete ${s.skillName}`);
+      const delSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      delSvg.setAttribute('width', '13');
+      delSvg.setAttribute('height', '13');
+      delSvg.setAttribute('viewBox', '0 0 24 24');
+      delSvg.setAttribute('fill', 'none');
+      delSvg.setAttribute('stroke', 'currentColor');
+      delSvg.setAttribute('stroke-width', '2');
+      delSvg.setAttribute('stroke-linecap', 'round');
+      delSvg.setAttribute('stroke-linejoin', 'round');
+      delSvg.setAttribute('aria-hidden', 'true');
+      const delPath1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      delPath1.setAttribute('d', 'M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6');
+      const delPath2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      delPath2.setAttribute('d', 'M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2');
+      delSvg.append(delPath1, delPath2);
+      delBtn.append(delSvg);
       delBtn.addEventListener('click', () => deleteRow(i));
 
+      const actionsWrap = createElement('div', 'entry-form__row-actions');
       actionsWrap.append(editBtn, delBtn);
       actionTd.append(actionsWrap);
 
-      tr.append(skillTd, expTd, certTd, titleTd, actionTd);
+      if (showActions) {
+        tr.append(skillTd, expTd, specTd, certTd, titleTd, actionTd);
+      } else {
+        tr.append(skillTd, expTd, specTd, certTd, titleTd);
+      }
       return tr;
     });
   }
@@ -355,24 +481,14 @@ export default async function decorate(block) {
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    const headers = ['Skill', 'Experience', 'Certification', 'Title of Certificate'];
+    const headers = ['Skill', 'Experience in Months', 'Specialization', 'Certification', 'Title of Certificate'];
     if (showActions) headers.push('');
     headers.forEach((label) => headerRow.append(createElement('th', '', label)));
     thead.append(headerRow);
     table.append(thead);
 
     const tbody = document.createElement('tbody');
-    if (state.rows.length === 0 && showActions) {
-      const emptyTr = document.createElement('tr');
-      const emptyTd = document.createElement('td');
-      emptyTd.colSpan = 5;
-      emptyTd.className = 'entry-form__empty-cell';
-      emptyTd.append(createElement('div', 'entry-form__empty-state', 'No skills added yet — fill in the row below and click + Add'));
-      emptyTr.append(emptyTd);
-      tbody.append(emptyTr);
-    } else {
-      renderDataRows().forEach((tr) => tbody.append(tr));
-    }
+    renderDataRows(showActions).forEach((tr) => tbody.append(tr));
     table.append(tbody);
 
     if (showActions) {
@@ -390,7 +506,6 @@ export default async function decorate(block) {
     wrapper.append(renderTable(true));
 
     const footer = createElement('div', 'entry-form__form-footer');
-    const countEl = createElement('span', 'entry-form__skill-count', `${state.rows.length} skill(s) added`);
     const submitBtn = createElement(
       'button',
       'entry-form__button entry-form__button--primary',
@@ -399,32 +514,31 @@ export default async function decorate(block) {
     submitBtn.type = 'button';
     submitBtn.disabled = state.rows.length === 0 || state.busy;
     submitBtn.addEventListener('click', handleSubmit);
-    footer.append(countEl, submitBtn);
+    footer.append(submitBtn);
     wrapper.append(footer);
   }
 
   function renderSuccess(wrapper) {
-    renderMessage(wrapper);
-    const success = createElement('div', 'entry-form__success');
-    success.append(createElement('h3', 'entry-form__preview-heading', 'Submission complete'));
-    success.append(createElement('p', '', 'Your skills have been recorded. You can submit more skills using the button below.'));
+    const heading = createElement('h3', 'entry-form__preview-heading', 'Skills submitted successfully!');
+    const sub = createElement('p', 'entry-form__success-sub', 'Your skills have been recorded.');
+    wrapper.append(heading, sub);
+
+    wrapper.append(renderTable(false));
+
     const actions = createElement('div', 'entry-form__actions');
-    const resetBtn = createElement('button', 'entry-form__button entry-form__button--primary', 'Submit more skills');
-    resetBtn.type = 'button';
-    resetBtn.addEventListener('click', () => {
+    const addMoreBtn = createElement('button', 'entry-form__button entry-form__button--primary', '+ Add More Skills');
+    addMoreBtn.type = 'button';
+    addMoreBtn.addEventListener('click', () => {
       state.mode = 'form';
       state.message = '';
       state.messageType = '';
       state.rows = [];
       state.editingIndex = -1;
-      state.input = {
-        skill: '', skillOther: '', months: 0, cert: '', certTitle: '',
-      };
+      state.input = blankInput();
       render();
     });
-    actions.append(resetBtn);
-    success.append(actions);
-    wrapper.append(success);
+    actions.append(addMoreBtn);
+    wrapper.append(actions);
   }
 
   render = function renderEntryForm() {
@@ -432,10 +546,11 @@ export default async function decorate(block) {
     const wrapper = createElement('div', 'entry-form__wrapper');
 
     const header = createElement('div', 'entry-form__header');
+    const displayName = state.name || state.employeeId;
     header.append(
       createElement('span', 'entry-form__heading-accent'),
-      createElement('h2', 'entry-form__heading', config.heading || 'Submit your skills'),
-      createElement('p', 'entry-form__meta', state.name || state.employeeId),
+      createElement('h2', 'entry-form__heading', displayName),
+      createElement('p', 'entry-form__heading-sub', config.heading || 'Submit your skills'),
     );
     wrapper.append(header);
 

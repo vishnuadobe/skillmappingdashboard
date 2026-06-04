@@ -14,16 +14,18 @@
 ### `entry-form` — `/` (index)
 **Status: Complete (live POST)**
 
-- Table-based UI: columns — Skill, Experience, Certification, Title of Certificate
-- Skill dropdown fetched dynamically from `/skill-levels.json?sheet=skills` (da.live authorable)
+- Table-based UI: columns — Skill, Experience in Months, Specialization, Certification, Title of Certificate
+- Skill dropdown fetched dynamically from `/skills.json` (da.live authorable)
   - "Other…" option reveals free-text input for custom skills not in the list
-- Experience dropdown: 5 month ranges (1–5, 6–10, 11–15, 16–20, 21+) matching `skill-levels` thresholds
+- Experience: free-text number input (1–1000 months); mandatory field
+- Specialization: custom multi-select dropdown, options fetched from `/specializations.json` (da.live `specializations` sheet, authorable); optional field — multiple values can be selected; selected values shown as indigo chips in data rows
 - Certification: simple Yes / No dropdown; Title of Certificate text input shown only when Yes
 - Inline Edit (✏) and Delete (×) per added row; editing row highlighted in amber
 - Add button commits row to table; Save button replaces row when editing
-- Form → Preview (full-page table, no popup) → Confirm → Success flow
+- Form → Success flow (submit directly, no preview step)
 - POSTs directly to the confirmed backend endpoint via `submitSkillReport()`
 - Proficiency level derived from experience months via `/skill-levels.json` (authorable)
+- `specializations` array included in POST payload per skill entry when selections are present
 - `email` and `name` in POST payload currently empty strings — will be populated from IndexDB once SSO is wired
 - 40px top padding added to card so it clears the site header
 - Removed dependency on `skill-data.js` (mock catalog no longer used in form)
@@ -83,8 +85,8 @@ Spreadsheet in da.live controlling the experience → proficiency level mapping.
 | 4 | Expert | 20 |
 | 5 | Master | 999 |
 
-### `/skill-levels.json?sheet=skills`
-Second tab (`skills`) in the same `skill-levels` da.live spreadsheet. Controls the skill dropdown in `entry-form`. Authors add or remove skills without any code change.
+### `/skills.json`
+Separate `skills` da.live spreadsheet. Controls the skill dropdown in `entry-form`. Authors add or remove skills without any code change.
 
 | name |
 |---|
@@ -93,6 +95,19 @@ Second tab (`skills`) in the same `skill-levels` da.live spreadsheet. Controls t
 | JavaScript |
 | React |
 | … |
+
+### `/specializations.json`
+Separate `specializations` da.live spreadsheet. Controls the multi-select specialization dropdown in `entry-form`. Authors add or remove options without any code change.
+
+| name |
+|---|
+| PNA |
+| SPA |
+| Micro frontX |
+| Hybrid Mobile App |
+| iOS Native App |
+| Android Native App |
+| AppBuils |
 
 ---
 

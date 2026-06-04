@@ -48,13 +48,13 @@ Both GET and POST use the same URL, defined in `scripts/api.js`.
 
 ### `entry-form` — `/` (index)
 - Employee submits their skills via an inline table UI
-- Columns: Skill (dropdown from da.live), Experience (month-range dropdown), Certification (Yes/No), Title of Certificate (shown when Yes)
-- "Other…" option allows free-text entry for custom skills
+- Columns: Skill, Experience in Months (mandatory), Specialization (optional multi-select), Certification (Yes/No), Title of Certificate (shown when Yes)
+- Skill dropdown from `/skills.json` (da.live authorable); "Other…" option allows free-text entry for custom skills
+- Specialization is a custom multi-select dropdown sourced from `/specializations.json` (da.live `specializations` sheet); multiple options can be chosen per skill row
 - Inline edit and delete per row before submission
-- Flow: Form → Preview (full-page table) → Confirm → Success
+- Flow: Form → Submit → Success (no intermediate preview step)
 - Proficiency level derived from authorable `/skill-levels.json`
-- Skill list fetched from `/skill-levels.json?sheet=skills` (authorable, same spreadsheet)
-- POSTs directly to backend via `submitSkillReport()`
+- POSTs directly to backend via `submitSkillReport()`; `specializations` array included per skill entry when present
 - `email` and `name` in POST payload currently empty — populated once SSO is wired
 
 ### `report-table` — `/employee-details`
@@ -87,7 +87,9 @@ Content at [da.live/#/vishnuadobe/skillmappingdashboard](https://da.live/#/vishn
 |---|---|---|
 | `index` | Document | Entry form page (entry-form block) |
 | `employee-details` | Document | Manager view page |
-| `skill-levels` | Spreadsheet | Experience → proficiency level thresholds (`data` tab) + skill dropdown list (`skills` tab) |
+| `skill-levels` | Spreadsheet | Experience → proficiency level thresholds (`data` tab) |
+| `skills` | Spreadsheet | Skill dropdown list for `entry-form` |
+| `specializations` | Spreadsheet | Specialization multi-select options for `entry-form` (PNA, SPA, Micro frontX, Hybrid Mobile App, iOS Native App, Android Native App, AppBuils) |
 
 ---
 
