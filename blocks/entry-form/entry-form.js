@@ -40,6 +40,10 @@ async function fetchSpecializations() {
   }
 }
 
+function normalizeSkillName(name) {
+  return name.trim().toLowerCase().replace(/[\s.]*\d+(\.\d+)*$/, '');
+}
+
 function readBlockConfig(block) {
   return [...block.children].reduce((config, row) => {
     const cells = [...row.children];
@@ -135,6 +139,7 @@ export default async function decorate(block) {
     email: user?.email || `${user?.ldap || config['employee-id'] || 'robinvarshn'}@adobe.com`,
     name: user?.name || user?.ldap || config['employee-id'] || 'robinvarshn',
     rows: [],
+    savedSkillNames: [],
     editingIndex: -1,
     input: blankInput(),
   };
@@ -156,10 +161,12 @@ export default async function decorate(block) {
     if (state.input.cert === 'yes' && !state.input.certTitle.trim()) {
       throw new Error('Please enter the Title of Certificate.');
     }
-    const isDuplicate = state.rows.some(
-      (r, i) => r.skillName.toLowerCase() === skillName.toLowerCase() && i !== state.editingIndex,
+    const normalized = normalizeSkillName(skillName);
+    const inCurrentRows = state.rows.some(
+      (r, i) => normalizeSkillName(r.skillName) === normalized && i !== state.editingIndex,
     );
-    if (isDuplicate) throw new Error(`"${skillName}" has already been added.`);
+    const inSavedRows = state.savedSkillNames.some((n) => normalizeSkillName(n) === normalized);
+    if (inCurrentRows || inSavedRows) throw new Error(`"${skillName}" has already been added.`);
   }
 
   function commitRow() {
@@ -185,7 +192,11 @@ export default async function decorate(block) {
   }
 
   function deleteRow(i) {
+    const deleted = state.rows[i];
     state.rows.splice(i, 1);
+    state.savedSkillNames = state.savedSkillNames.filter(
+      (n) => n.toLowerCase() !== deleted.skillName.toLowerCase(),
+    );
     if (state.editingIndex === i) {
       state.editingIndex = -1;
       state.input = blankInput();
@@ -238,6 +249,7 @@ export default async function decorate(block) {
     if (data.email) state.email = data.email;
     if (data.name) state.name = data.name;
     state.rows = (data.skills || []).map(mapServerSkillToRow);
+    state.savedSkillNames = state.rows.map((r) => r.skillName);
     state.editingIndex = -1;
     state.input = blankInput();
   }
@@ -250,14 +262,18 @@ export default async function decorate(block) {
     try {
       const payload = await buildPayload();
       await submitSkillReport(payload);
-      try {
-        await loadSavedRows();
-      } catch (loadErr) {
-        // eslint-disable-next-line no-console
-        console.error('Could not reload saved skills:', loadErr);
+      if (state.mode !== 'saved') {
+        try {
+          await loadSavedRows();
+        } catch (loadErr) {
+          // eslint-disable-next-line no-console
+          console.error('Could not reload saved skills:', loadErr);
+        }
+      } else {
+        state.savedSkillNames = state.rows.map((r) => r.skillName);
       }
       state.mode = 'saved';
-      state.message = 'Submission saved successfully.';
+      state.message = 'Changes saved successfully.';
       state.messageType = 'success';
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -410,7 +426,7 @@ export default async function decorate(block) {
     return tr;
   }
 
-  function renderDataRows(showActions = true) {
+  function renderDataRows(showActions = true, showDelete = showActions) {
     return state.rows.map((s, i) => {
       const expLabel = `${s.months} month${s.months === 1 ? '' : 's'}`;
 
@@ -455,8 +471,8 @@ export default async function decorate(block) {
       editBtn.title = 'Edit';
       editBtn.setAttribute('aria-label', `Edit ${s.skillName}`);
       const editSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      editSvg.setAttribute('width', '13');
-      editSvg.setAttribute('height', '13');
+      editSvg.setAttribute('width', '16');
+      editSvg.setAttribute('height', '16');
       editSvg.setAttribute('viewBox', '0 0 24 24');
       editSvg.setAttribute('fill', 'none');
       editSvg.setAttribute('stroke', 'currentColor');
@@ -494,7 +510,8 @@ export default async function decorate(block) {
       delBtn.addEventListener('click', () => deleteRow(i));
 
       const actionsWrap = createElement('div', 'entry-form__row-actions');
-      actionsWrap.append(editBtn, delBtn);
+      actionsWrap.append(editBtn);
+      if (showDelete) actionsWrap.append(delBtn);
       actionTd.append(actionsWrap);
 
       if (showActions) {
@@ -506,7 +523,7 @@ export default async function decorate(block) {
     });
   }
 
-  function renderTable(showActions = true) {
+  function renderTable(showActions = true, showInputRow = showActions, showDelete = showActions) {
     const tableWrap = createElement('div', 'entry-form__table-wrap');
     const table = document.createElement('table');
     table.className = 'entry-form__skills-table';
@@ -520,10 +537,10 @@ export default async function decorate(block) {
     table.append(thead);
 
     const tbody = document.createElement('tbody');
-    renderDataRows(showActions).forEach((tr) => tbody.append(tr));
+    renderDataRows(showActions, showDelete).forEach((tr) => tbody.append(tr));
     table.append(tbody);
 
-    if (showActions) {
+    if (showInputRow) {
       const tfoot = document.createElement('tfoot');
       tfoot.append(renderInputRow());
       table.append(tfoot);
@@ -564,10 +581,24 @@ export default async function decorate(block) {
       'Your saved skills are below. Edit or add any entry, then click Save changes.',
     ));
 
-    renderMessage(wrapper);
-    wrapper.append(renderTable(true));
+    if (state.messageType === 'error') renderMessage(wrapper);
+    wrapper.append(renderTable(true, false, false));
 
     const footer = createElement('div', 'entry-form__form-footer');
+
+    const addMoreBtn = createElement('button', 'entry-form__button', '+ Add more skills');
+    addMoreBtn.type = 'button';
+    addMoreBtn.disabled = state.busy;
+    addMoreBtn.addEventListener('click', () => {
+      state.mode = 'form';
+      state.message = '';
+      state.messageType = '';
+      state.rows = [];
+      state.editingIndex = -1;
+      state.input = blankInput();
+      render();
+    });
+
     const saveBtn = createElement(
       'button',
       'entry-form__button entry-form__button--primary',
@@ -576,7 +607,8 @@ export default async function decorate(block) {
     saveBtn.type = 'button';
     saveBtn.disabled = state.rows.length === 0 || state.busy;
     saveBtn.addEventListener('click', handleSubmit);
-    footer.append(saveBtn);
+
+    footer.append(addMoreBtn, saveBtn);
     wrapper.append(footer);
   }
 
