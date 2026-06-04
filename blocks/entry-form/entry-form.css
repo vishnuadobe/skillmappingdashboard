@@ -535,6 +535,11 @@
   color: var(--entry-form-success);
 }
 
+.entry-form .entry-form__message--info {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
 /* ── Saved view ── */
 .entry-form .entry-form__saved-banner {
   display: flex;

@@ -195,17 +195,21 @@ export default async function decorate(block) {
     if (state.input.cert === 'yes' && !state.input.certTitle.trim()) {
       throw new Error('Please enter the Title of Certificate.');
     }
+    // Block duplicates within the current form, but allow re-adding a previously saved
+    // skill — that re-add is appended/overridden on submit (handled server-side on merge).
     const normalized = normalizeSkillName(skillName);
-    const editingName = state.editingIndex >= 0
-      ? normalizeSkillName(state.rows[state.editingIndex].skillName)
-      : null;
     const inCurrentRows = state.rows.some(
       (r, i) => normalizeSkillName(r.skillName) === normalized && i !== state.editingIndex,
     );
-    const inSavedRows = state.savedSkillNames.some(
-      (n) => normalizeSkillName(n) === normalized && normalizeSkillName(n) !== editingName,
-    );
-    if (inCurrentRows || inSavedRows) throw new Error(`"${skillName}" has already been added.`);
+    if (inCurrentRows) throw new Error(`"${skillName}" already exists in this form.`);
+    // Duplicate check against already-saved skills disabled — re-adds are allowed:
+    // const editingName = state.editingIndex >= 0
+    //   ? normalizeSkillName(state.rows[state.editingIndex].skillName)
+    //   : null;
+    // const inSavedRows = state.savedSkillNames.some(
+    //   (n) => normalizeSkillName(n) === normalized && normalizeSkillName(n) !== editingName,
+    // );
+    // if (inSavedRows) throw new Error(`"${skillName}" has already been added.`);
   }
 
   function commitRow() {
@@ -218,15 +222,23 @@ export default async function decorate(block) {
       certTitle: state.input.certTitle.trim(),
       certImageUrl: state.input.certImageUrl,
     };
+    let info = '';
     if (state.editingIndex >= 0) {
       state.rows[state.editingIndex] = entry;
       state.editingIndex = -1;
     } else {
       state.rows.push(entry);
+      // Re-adding a previously saved skill — flag that it will update the saved entry
+      const isSavedReAdd = state.savedSkillNames.some(
+        (n) => normalizeSkillName(n) === normalizeSkillName(entry.skillName),
+      );
+      if (isSavedReAdd) {
+        info = `"${entry.skillName}" already exists — it will be updated with the new values on submit.`;
+      }
     }
     state.input = blankInput();
-    state.message = '';
-    state.messageType = '';
+    state.message = info;
+    state.messageType = info ? 'info' : '';
     render();
   }
 
@@ -637,15 +649,16 @@ export default async function decorate(block) {
     wrapper.append(createElement(
       'p',
       'entry-form__saved-sub',
-      'Your saved skills are below. Edit or add any entry, then click Save changes.',
+      'Your saved skills are below. Use “+ Add more skills” to submit additional entries.',
     ));
 
     if (state.messageType === 'error') renderMessage(wrapper);
-    wrapper.append(renderTable(true, false, false));
+    // No actions column in saved view (edit button disabled, no delete)
+    wrapper.append(renderTable(false, false, false));
 
     const footer = createElement('div', 'entry-form__form-footer');
 
-    const addMoreBtn = createElement('button', 'entry-form__button', '+ Add more skills');
+    const addMoreBtn = createElement('button', 'entry-form__button entry-form__button--primary', '+ Add more skills');
     addMoreBtn.type = 'button';
     addMoreBtn.disabled = state.busy;
     addMoreBtn.addEventListener('click', () => {
@@ -658,16 +671,7 @@ export default async function decorate(block) {
       render();
     });
 
-    const saveBtn = createElement(
-      'button',
-      'entry-form__button entry-form__button--primary',
-      state.busy ? 'Saving…' : 'Save changes',
-    );
-    saveBtn.type = 'button';
-    saveBtn.disabled = state.rows.length === 0 || state.busy;
-    saveBtn.addEventListener('click', handleSubmit);
-
-    footer.append(addMoreBtn, saveBtn);
+    footer.append(addMoreBtn);
     wrapper.append(footer);
   }
 
