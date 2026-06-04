@@ -3,13 +3,27 @@ const SKILL_REPORT_URL = `${API_BASE_URL}/skillReport`;
 
 let levelsCache = null;
 
-function ensureOk(response) {
+async function ensureOk(response) {
   if (response.ok) {
     return response;
   }
 
-  const error = new Error(`API request failed with status ${response.status}`);
+  // Surface the backend's actual error message, not just the status code
+  let detail = '';
+  try {
+    const body = await response.clone().json();
+    detail = body?.error || JSON.stringify(body);
+  } catch {
+    try {
+      detail = await response.text();
+    } catch {
+      detail = '';
+    }
+  }
+
+  const error = new Error(detail || `API request failed with status ${response.status}`);
   error.status = response.status;
+  error.detail = detail;
   throw error;
 }
 
@@ -25,7 +39,7 @@ async function requestJson(path, options = {}) {
     ...restOptions,
   });
 
-  ensureOk(response);
+  await ensureOk(response);
   return response.json();
 }
 

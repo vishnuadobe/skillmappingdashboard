@@ -325,8 +325,11 @@ export default async function decorate(block) {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('Submission failed:', err);
-      const detail = err.status ? ` (HTTP ${err.status})` : '';
-      state.message = `Submission failed${detail}. Check the browser console for details.`;
+      const status = err.status ? ` (HTTP ${err.status})` : '';
+      const reason = err.detail || err.message;
+      state.message = reason
+        ? `Submission failed${status}: ${reason}`
+        : `Submission failed${status}. Check the browser console for details.`;
       state.messageType = 'error';
     } finally {
       state.busy = false;
