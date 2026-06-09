@@ -11,7 +11,7 @@ An internal Adobe tool for mapping and tracking frontend skill proficiency acros
 | URL | Block | Audience |
 |---|---|---|
 | `/` | `entry-form` | Employees |
-| `/employee-details` | `report-table` | Managers (not in active routing flow — accessed directly) |
+| `/employee-details` | `report-table` | Managers (accessed directly by URL; **gated to managers**, non-managers redirected to `/`) |
 
 ---
 
@@ -20,13 +20,18 @@ An internal Adobe tool for mapping and tracking frontend skill proficiency acros
 ```
 Open app (index — entry form lives here)
 │
-├── SSO login via Adobe IMS (not wired yet — waiting on credentials)
-│   └── return profile → setUser() in db.js
+├── SSO login via Adobe IMS (wired in auth.js)
+│   └── return profile → setUser({ name, email, ldap, isManager }) in db.js
+│       └── isManager derived from /employee-mapping.json
 │
 ├── Fill form → POST skill report → Backend API
 │   └── Success → fetch GET employee/{id} → Saved view
 │       ├── Edit any saved skill → Save changes → re-POST
 │       └── + Add more skills → back to blank form
+│
+├── Managers also see a view toggle (Enter Skills ⇄ Manager View)
+│   └── Manager View (/employee-details) → direct-reports skill report
+│       (non-managers are redirected back to /)
 │
 Logout (either page) → clearUser() → redirect to /
 ```
@@ -62,7 +67,9 @@ Defined in `scripts/api.js`.
 - Inline edit (✏) and delete (×) per row before submission
 - Duplicate detection: case-insensitive + version-normalised (`HTML` and `HTML5` are treated as the same skill); also checks against already-saved skills
 - Proficiency level derived from authorable `/skill-levels.json`
-- POSTs directly to backend via `submitSkillReport()`; `specializations` array included per skill entry when present
+- POSTs directly to backend via `submitSkillReport()`; specialization round-trips as the backend's `specialization` comma-string (joined on write, split on read)
+- **Previously submitted skills** shown as a read-only list below the form (loaded on init into `state.savedRows`)
+- For managers, a **view toggle** ("Enter Skills ⇄ Manager View") appears at the top; regular employees don't see it
 
 **Saved view** (post-submit):
 - Fetches employee record via `getEmployeeSkillReport(employeeId)` and displays all saved skills
@@ -75,11 +82,16 @@ Defined in `scripts/api.js`.
 
 ### `report-table` — `/employee-details`
 - Manager-facing skill matrix (rows = employees, columns = skills)
+- **Gated to managers** — `getSessionUser()` + `isManager`; non-managers redirected to `/`
+- **Direct-reports filter** — only the logged-in manager's reports (`Manager LDAP === me`), joined via `employee-mapping.js`
 - Live data via `getSkillReport()`
 - Level badges driven by `proficiencyLevels` from API response metadata
+- Skills grouped under **rarity-tier banners** (Generic → Ultra niche), computed from org-wide holder counts — see `progress.md` / `RARITY_TIERS`
+- Light, uniform grid lines (`--report-table-grid`); skill columns centred under their banner
+- **View toggle** — "Enter Skills ⇄ Manager View" so a manager can switch to the entry form
 - Sticky employee column, Export CSV
-- Loading and error states handled
-- Logout button → `logout()` in `auth.js`
+- Loading, error, and empty states handled
+- No logout in-block (global header Logout only)
 
 ---
 
@@ -87,11 +99,13 @@ Defined in `scripts/api.js`.
 
 | File | Purpose |
 |---|---|
-| `scripts/api.js` | `getSkillReport()`, `getEmployeeSkillReport(id)`, `submitSkillReport()`, `buildSkillsPayload()`, async `getLevelFromExperienceMonths()` |
-| `scripts/auth.js` | `logout()` (default export) — clears IndexDB and redirects to `/`. SSO stub to be added. |
+| `scripts/api.js` | `getSkillReport()`, `getEmployeeSkillReport(id)`, `submitSkillReport()`, `buildSkillsPayload()` (specialization → comma string), async `getLevelFromExperienceMonths()` |
+| `scripts/auth.js` | SSO wired: `initAuth`/`loadIms`, `logout()` (default), `getSessionUser()` (+ `?as=` test impersonation), `isTestEnvironment()`. Derives `isManager` from the mapping sheet |
+| `scripts/employee-mapping.js` | Loads/caches `/employee-mapping.json`; `normalizeLdap`, `getEmployeeMapping`, `isManager`, `getDirectReports`, `buildUserFromMapping` |
+| `scripts/view-toggle.js` | `buildViewToggle(currentView)` — segmented "Enter Skills ⇄ Manager View" control shown to managers on both pages; preserves `?as=` on navigation |
 | `scripts/db.js` | IndexDB — `setUser`, `getUser`, `clearUser` for `{ name, email, ldap, isManager }` |
-| `scripts/skill-data.js` | Mock data — still used by `report-table`; to be replaced once SSO provides user context |
-| `scripts/scripts.js` | AEM page decoration entry point — no auth routing on index |
+| `scripts/skill-data.js` | Mock data — legacy; blocks use the live API |
+| `scripts/scripts.js` | AEM page decoration entry point; production runs `initAuth(loadPage)`, local/preview skips auth |
 
 ---
 
@@ -106,6 +120,7 @@ Content at [da.live/#/vishnuadobe/skillmappingdashboard](https://da.live/#/vishn
 | `skill-levels` | Spreadsheet | Experience → proficiency level thresholds (`data` tab) |
 | `skills` | Spreadsheet | Skill dropdown list for `entry-form` |
 | `specializations` | Spreadsheet | Specialization multi-select options for `entry-form` (PNA, SPA, Micro frontX, Hybrid Mobile App, iOS Native App, Android Native App, AppBuils) |
+| `employee-mapping` | Spreadsheet | Manager hierarchy (`Emp_LDAP`, `Resource Name`, `Workday Manager`, `Manager LDAP`) — drives `isManager` and the direct-reports filter |
 
 ---
 
@@ -113,9 +128,10 @@ Content at [da.live/#/vishnuadobe/skillmappingdashboard](https://da.live/#/vishn
 
 | Feature | Notes |
 |---|---|
-| SSO login (Adobe IMS) | Client ID in hand — using `@identity/imsLib` (imslib.min.js from CDN). Wiring deferred. |
-| IndexDB write after login | `setUser()` ready in `db.js`, needs to be called from `auth.js` after IMS `onReady` |
-| Replace mock skill catalog | `skill-data.js` still used by `report-table` — entry-form now uses da.live `skills` sheet |
-| Auth headers on API calls | Pending — do GET/POST need a bearer token from SSO? |
-| `isManager` check | Source of truth undecided (IMS profile field vs. backend call) |
+| ~~SSO login (Adobe IMS)~~ | **Done** — wired in `auth.js` (`loadIms`, profile → `setUser`) |
+| ~~IndexDB write after login~~ | **Done** — `setUser()` called from IMS `onReady` |
+| ~~`isManager` check~~ | **Done** — derived from `/employee-mapping.json` |
+| Replace mock skill catalog | `skill-data.js` legacy; blocks use live API |
+| Auth headers on API calls | `requestJson()` sends a bearer token when IMS present; confirm backend requirement |
+| Data reconciliation | LDAP spellings must match between mapping sheet and skill backend (e.g. `chethankuma` vs `chethankumar`) |
 | Server-side skill deletion | Backend merges only; need a delete endpoint or replace semantics on POST |

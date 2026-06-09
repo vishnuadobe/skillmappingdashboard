@@ -1,6 +1,7 @@
 .report-table {
   --report-table-border: #d8dee8;
   --report-table-border-strong: #bfd3ee;
+  --report-table-grid: #eef1f5;
   --report-table-surface: #fff;
   --report-table-surface-alt: #f8fbff;
   --report-table-text: #1f2937;
@@ -176,7 +177,7 @@
 .report-table .report-table__table th,
 .report-table .report-table__table td {
   padding: 12px 16px;
-  border-bottom: 1px solid #edf1f6;
+  border-bottom: 1px solid var(--report-table-grid);
   text-align: left;
   vertical-align: middle;
 }
@@ -190,46 +191,51 @@
   text-transform: uppercase;
 }
 
-.report-table .report-table__col-skill-name {
-  display: block;
+/* Centre skill columns (names + badges) so each lines up under its tier banner.
+   The Employee column stays left-aligned. */
+.report-table .report-table__table th.report-table__col-skill,
+.report-table .report-table__table td:not(.report-table__cell-employee) {
+  text-align: center;
 }
 
-/* ── Skill rarity tags (column headers) ── */
-.report-table .report-table__rarity {
-  display: inline-block;
-  margin-top: 6px;
-  padding: 2px 8px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+/* Light vertical grid lines (skip the tier banners, which have their own
+   group dividers, and the last column at the table edge). */
+.report-table .report-table__table th:not(.report-table__group, :last-child),
+.report-table .report-table__table td:not(:last-child) {
+  border-right: 1px solid var(--report-table-grid);
+}
+
+/* ── Rarity tier banner (grouped column header) ── */
+.report-table .report-table__table th.report-table__group {
+  text-align: center;
+  border-bottom: 1px solid #edf1f6;
+  font-size: 0.72rem;
   text-transform: none;
+}
+
+.report-table .report-table__table th.report-table__group:not(:first-of-type) {
+  border-left: 2px solid var(--report-table-surface);
 }
 
 /* Single rose hue ramping in intensity (light = common → deep = rare), kept
    distinct from the multicolour proficiency badges so the two scales never
    look alike. */
-.report-table .report-table__rarity--generic {
-  border-color: #ffe4e6;
+.report-table .report-table__table th.report-table__group--generic {
   background: #fff1f2;
   color: #9f1239;
 }
 
-.report-table .report-table__rarity--niche {
-  border-color: #fecdd3;
+.report-table .report-table__table th.report-table__group--niche {
   background: #ffe4e6;
   color: #9f1239;
 }
 
-.report-table .report-table__rarity--super-niche {
-  border-color: #fda4af;
+.report-table .report-table__table th.report-table__group--super-niche {
   background: #fecdd3;
   color: #9f1239;
 }
 
-.report-table .report-table__rarity--ultra-niche {
-  border-color: #9f1239;
+.report-table .report-table__table th.report-table__group--ultra-niche {
   background: #9f1239;
   color: #fff;
 }
@@ -259,7 +265,7 @@
   background: #fff;
   color: var(--report-table-text);
   font-weight: 600;
-  border-right: 1px solid var(--report-table-border);
+  border-right: 1px solid var(--report-table-grid);
 }
 
 .report-table .report-table__table tbody tr:hover .report-table__cell-employee {

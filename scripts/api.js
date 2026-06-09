@@ -74,6 +74,10 @@ export function buildSkillsPayload(employeeId, email, name, skillEntries) {
         expInMonths: entry.expInMonths,
         proficiencyLevel: entry.proficiencyLevel,
       };
+      // Backend stores specialization as a single comma-separated string.
+      if (Array.isArray(entry.specializations) && entry.specializations.length) {
+        skill.specialization = entry.specializations.join(', ');
+      }
       if (entry.certification) {
         skill.certification = { certificateName: entry.certification.name };
         if (entry.certification.imageUrl) {

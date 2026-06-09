@@ -4,14 +4,22 @@ import {
   submitSkillReport,
   getEmployeeSkillReport,
 } from '../../scripts/api.js';
-import { getUser } from '../../scripts/db.js';
+import { getSessionUser } from '../../scripts/auth.js';
+import buildViewToggle from '../../scripts/view-toggle.js';
+
+function parseSpecializations(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') return value.split(',').map((v) => v.trim()).filter(Boolean);
+  return [];
+}
 
 function mapServerSkillToRow(skill) {
   const certification = skill.certification || null;
   return {
     skillName: skill.name,
     months: Number(skill.expInMonths) || 0,
-    specializations: Array.isArray(skill.specializations) ? skill.specializations : [],
+    // Backend sends a comma-separated `specialization` string; the UI uses an array.
+    specializations: parseSpecializations(skill.specialization ?? skill.specializations),
     cert: certification ? 'yes' : 'no',
     certTitle: certification?.certificateName || certification?.name || '',
     certImageUrl: certification?.certificateImageUrl || certification?.imageUrl || '',
@@ -157,8 +165,9 @@ function buildMultiSelect(options, initialValues, onChange) {
 export default async function decorate(block) {
   const config = readBlockConfig(block);
   const [user, skillList, specializationList] = await Promise.all([
-    getUser(), fetchSkillList(), fetchSpecializations(),
+    getSessionUser(), fetchSkillList(), fetchSpecializations(),
   ]);
+  const isManagerUser = !!user?.isManager;
 
   const blankInput = () => ({
     skill: '', skillOther: '', months: 0, specializations: [], cert: '', certTitle: '', certImageUrl: '',
@@ -173,6 +182,7 @@ export default async function decorate(block) {
     email: user?.email || `${user?.ldap || config['employee-id'] || 'robinvarshn'}@adobe.com`,
     name: user?.name || user?.ldap || config['employee-id'] || 'robinvarshn',
     rows: [],
+    savedRows: [],
     savedSkillNames: [],
     editingIndex: -1,
     input: blankInput(),
@@ -308,9 +318,27 @@ export default async function decorate(block) {
     if (data.email) state.email = data.email;
     if (data.name) state.name = data.name;
     state.rows = (data.skills || []).map(mapServerSkillToRow);
+    state.savedRows = (data.skills || []).map(mapServerSkillToRow);
     state.savedSkillNames = state.rows.map((r) => r.skillName);
     state.editingIndex = -1;
     state.input = blankInput();
+  }
+
+  // Loads the employee's already-submitted skills for the read-only
+  // "Previously submitted skills" list shown below the form.
+  async function loadPreviousEntries() {
+    try {
+      const res = await getEmployeeSkillReport(state.employeeId);
+      const data = res?.data || {};
+      if (data.email) state.email = data.email;
+      if (data.name) state.name = data.name;
+      state.savedRows = (data.skills || []).map(mapServerSkillToRow);
+      state.savedSkillNames = state.savedRows.map((r) => r.skillName);
+      render();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Could not load previous entries:', err);
+    }
   }
 
   async function handleSubmit() {
@@ -496,8 +524,8 @@ export default async function decorate(block) {
     return tr;
   }
 
-  function renderDataRows(showActions = true, showDelete = showActions) {
-    return state.rows.map((s, i) => {
+  function renderDataRows(rows, showActions = true, showDelete = showActions) {
+    return rows.map((s, i) => {
       // Editing happens inline — replace the data row with the input row
       if (showActions && state.editingIndex === i) return renderInputRow();
 
@@ -596,7 +624,12 @@ export default async function decorate(block) {
     });
   }
 
-  function renderTable(showActions = true, showInputRow = showActions, showDelete = showActions) {
+  function renderTable(
+    rows,
+    showActions = true,
+    showInputRow = showActions,
+    showDelete = showActions,
+  ) {
     const tableWrap = createElement('div', 'entry-form__table-wrap');
     const table = document.createElement('table');
     table.className = 'entry-form__skills-table';
@@ -610,7 +643,7 @@ export default async function decorate(block) {
     table.append(thead);
 
     const tbody = document.createElement('tbody');
-    renderDataRows(showActions, showDelete).forEach((tr) => tbody.append(tr));
+    renderDataRows(rows, showActions, showDelete).forEach((tr) => tbody.append(tr));
     table.append(tbody);
 
     if (showInputRow && state.editingIndex < 0) {
@@ -623,9 +656,18 @@ export default async function decorate(block) {
     return tableWrap;
   }
 
+  function renderPreviousEntries(wrapper) {
+    if (!state.savedRows.length) return;
+    const section = createElement('div', 'entry-form__previous');
+    section.append(createElement('h3', 'entry-form__previous-title', 'Previously submitted skills'));
+    // Read-only: no actions, no input row, no delete.
+    section.append(renderTable(state.savedRows, false, false, false));
+    wrapper.append(section);
+  }
+
   function renderForm(wrapper) {
     renderMessage(wrapper);
-    wrapper.append(renderTable(true));
+    wrapper.append(renderTable(state.rows, true));
 
     const footer = createElement('div', 'entry-form__form-footer');
     const submitBtn = createElement(
@@ -638,6 +680,8 @@ export default async function decorate(block) {
     submitBtn.addEventListener('click', handleSubmit);
     footer.append(submitBtn);
     wrapper.append(footer);
+
+    renderPreviousEntries(wrapper);
   }
 
   function renderSaved(wrapper) {
@@ -656,7 +700,7 @@ export default async function decorate(block) {
 
     if (state.messageType === 'error') renderMessage(wrapper);
     // No actions column in saved view (edit button disabled, no delete)
-    wrapper.append(renderTable(false, false, false));
+    wrapper.append(renderTable(state.rows, false, false, false));
 
     const footer = createElement('div', 'entry-form__form-footer');
 
@@ -680,6 +724,7 @@ export default async function decorate(block) {
   render = function renderEntryForm() {
     document.querySelectorAll('.entry-form__multi-panel').forEach((p) => multiPanelCleanups.get(p)?.());
     block.textContent = '';
+    if (isManagerUser) block.append(buildViewToggle('entry'));
     const wrapper = createElement('div', 'entry-form__wrapper');
 
     const header = createElement('div', 'entry-form__header');
@@ -704,4 +749,5 @@ export default async function decorate(block) {
   };
 
   render();
+  loadPreviousEntries();
 }

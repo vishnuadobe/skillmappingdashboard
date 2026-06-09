@@ -1,6 +1,7 @@
 import { getSkillReport } from '../../scripts/api.js';
 import { getSessionUser, isTestEnvironment } from '../../scripts/auth.js';
 import { getDirectReports, normalizeLdap } from '../../scripts/employee-mapping.js';
+import buildViewToggle from '../../scripts/view-toggle.js';
 
 function readBlockConfig(block) {
   return [...block.children].reduce((config, row) => {
@@ -40,9 +41,9 @@ function buildMatrix(employees, skillRarity) {
 // First tier whose `minShare` the skill meets wins.
 const RARITY_TIERS = [
   { id: 'generic', label: 'Generic', minShare: 0.5 },
-  { id: 'niche', label: 'Niche', minShare: 0.25 },
-  { id: 'super-niche', label: 'Super niche', minShare: 0.1 },
-  { id: 'ultra-niche', label: 'Ultra niche', minShare: 0 },
+  { id: 'niche', label: 'Niche', minShare: 0.3 },
+  { id: 'super-niche', label: 'Super niche', minShare: 0.2 },
+  { id: 'ultra-niche', label: 'Ultra niche', minShare: 0.1 },
 ];
 
 function getRarityTier(share) {
@@ -150,20 +151,39 @@ function renderTable(block, config, data, skillRarity) {
   const table = createElement('table', 'report-table__table');
 
   const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  headerRow.append(createElement('th', 'report-table__col-employee', 'Employee'));
+
+  // Banner row: Employee spans both header rows, then one cell per rarity tier
+  // spanning its skills. Columns are sorted rarest-first, so same-tier skills
+  // are contiguous and can be collapsed into colspan groups.
+  const groupRow = document.createElement('tr');
+  const employeeTh = createElement('th', 'report-table__col-employee', 'Employee');
+  employeeTh.rowSpan = 2;
+  groupRow.append(employeeTh);
+
+  const groups = [];
   skillNames.forEach((name) => {
-    const th = createElement('th', 'report-table__col-skill');
-    th.append(createElement('span', 'report-table__col-skill-name', name));
-    const info = skillRarity?.get(name);
-    if (info) {
-      const tag = createElement('span', `report-table__rarity report-table__rarity--${info.tier.id}`, info.tier.label);
-      tag.title = `Held by ${info.holders} of ${info.total} employees (${Math.round(info.share * 100)}%)`;
-      th.append(tag);
-    }
-    headerRow.append(th);
+    const tier = skillRarity?.get(name)?.tier;
+    const id = tier?.id || 'unknown';
+    const last = groups[groups.length - 1];
+    if (last && last.id === id) last.count += 1;
+    else groups.push({ id, label: tier?.label || '', count: 1 });
   });
-  thead.append(headerRow);
+  groups.forEach((group) => {
+    const th = createElement('th', `report-table__group report-table__group--${group.id}`, group.label);
+    th.colSpan = group.count;
+    groupRow.append(th);
+  });
+  thead.append(groupRow);
+
+  // Skill-name row.
+  const nameRow = document.createElement('tr');
+  skillNames.forEach((name) => {
+    const th = createElement('th', 'report-table__col-skill', name);
+    const info = skillRarity?.get(name);
+    if (info) th.title = `Held by ${info.holders} of ${info.total} employees (${Math.round(info.share * 100)}%)`;
+    nameRow.append(th);
+  });
+  thead.append(nameRow);
   table.append(thead);
 
   const tbody = document.createElement('tbody');
@@ -226,10 +246,12 @@ export default async function decorate(block) {
     if (employees.length === 0) {
       block.textContent = '';
       block.append(createElement('p', 'report-table__empty', 'No direct reports have submitted skills yet.'));
+      block.prepend(buildViewToggle('report'));
       return;
     }
 
     renderTable(block, config, { ...data, employees }, skillRarity);
+    block.prepend(buildViewToggle('report'));
   } catch {
     block.textContent = '';
     block.append(createElement('p', 'report-table__error', 'Failed to load skill report. Please try again.'));
