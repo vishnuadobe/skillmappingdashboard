@@ -190,6 +190,50 @@
   text-transform: uppercase;
 }
 
+.report-table .report-table__col-skill-name {
+  display: block;
+}
+
+/* ── Skill rarity tags (column headers) ── */
+.report-table .report-table__rarity {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+/* Single rose hue ramping in intensity (light = common → deep = rare), kept
+   distinct from the multicolour proficiency badges so the two scales never
+   look alike. */
+.report-table .report-table__rarity--generic {
+  border-color: #ffe4e6;
+  background: #fff1f2;
+  color: #9f1239;
+}
+
+.report-table .report-table__rarity--niche {
+  border-color: #fecdd3;
+  background: #ffe4e6;
+  color: #9f1239;
+}
+
+.report-table .report-table__rarity--super-niche {
+  border-color: #fda4af;
+  background: #fecdd3;
+  color: #9f1239;
+}
+
+.report-table .report-table__rarity--ultra-niche {
+  border-color: #9f1239;
+  background: #9f1239;
+  color: #fff;
+}
+
 .report-table .report-table__table tbody tr:last-child td {
   border-bottom: 0;
 }

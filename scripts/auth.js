@@ -1,4 +1,29 @@
-import { setUser, clearUser } from './db.js';
+import { setUser, getUser, clearUser } from './db.js';
+import { isManager, buildUserFromMapping } from './employee-mapping.js';
+
+/**
+ * True on local dev and branch-preview hosts, where SSO is skipped and
+ * `?as=<ldap>` impersonation is permitted for testing.
+ * @returns {boolean}
+ */
+export function isTestEnvironment() {
+  const { hostname } = window.location;
+  return hostname === 'localhost' || hostname.includes('.aem.page');
+}
+
+/**
+ * Resolves the active user. In test environments an `?as=<ldap>` query
+ * parameter impersonates that employee (resolved from the mapping sheet);
+ * otherwise the SSO-populated IndexDB record is returned.
+ * @returns {Promise<object|null>}
+ */
+export async function getSessionUser() {
+  if (isTestEnvironment()) {
+    const asLdap = new URLSearchParams(window.location.search).get('as');
+    if (asLdap) return buildUserFromMapping(asLdap);
+  }
+  return getUser();
+}
 
 function loadScript(src) {
   const script = document.createElement('script');
@@ -23,11 +48,16 @@ async function loadIms(onReady) {
             try {
               const profile = await window.adobeIMS.getProfile();
               const email = profile.email || '';
+              const ldap = email.split('@')[0] || profile.userId || '';
+              let managerFlag = false;
+              try {
+                managerFlag = await isManager(ldap);
+              } catch { /* default to non-manager if the mapping can't be read */ }
               await setUser({
                 name: profile.displayName || '',
                 email,
-                ldap: email.split('@')[0] || profile.userId || '',
-                isManager: false,
+                ldap,
+                isManager: managerFlag,
               });
             } catch { /* continue if profile fetch fails */ }
             onReady();
