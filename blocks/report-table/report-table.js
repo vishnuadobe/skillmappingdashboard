@@ -87,12 +87,19 @@ function getLevelInitial(proficiencyLevels, level) {
   return label && label !== '—' ? label.charAt(0).toUpperCase() : '';
 }
 
-// Flattens the tier table to CSV with the same column order as on screen:
-// Employee, then a Skill + Months pair per rarity tier. One row per skill, with
-// the skill's level-tagged name and months landing under its matching tier.
+// Produces a CSV that mirrors the two-row thead (group + sub-header) and the
+// rowspan body of the on-screen tier table so the export is 1:1 with what is
+// displayed: Employee name only on the first skill row, skill placed under its
+// matching tier column, all other tier columns empty for that row.
 function tierTableToCsv(employees, proficiencyLevels, skillRarity) {
-  const header = ['Employee'];
-  RARITY_TIERS.forEach((tier) => header.push(`${tier.label} Skill`, `${tier.label} Months`));
+  // Row 1: Employee | Generic | "" | Niche | "" | …  (mirrors colspan-2 banners)
+  const groupRow = ['Employee'];
+  // Row 2: ""       | Skill   | Months | Skill | Months | … (sub-column headers)
+  const subRow = [''];
+  RARITY_TIERS.forEach((tier) => {
+    groupRow.push(tier.label, '');
+    subRow.push('Skill', 'Months');
+  });
 
   const dataRows = [];
   employees.forEach((emp) => {
@@ -118,7 +125,7 @@ function tierTableToCsv(employees, proficiencyLevels, skillRarity) {
     });
   });
 
-  return [header, ...dataRows]
+  return [groupRow, subRow, ...dataRows]
     .map((row) => row.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(','))
     .join('\n');
 }
