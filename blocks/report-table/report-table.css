@@ -307,6 +307,11 @@
   background: #fafcff;
 }
 
+/* Dark rule between employees (skip the very first employee row) */
+.report-table .report-table__table--tiers tbody .report-table__row--emp-start:not(:first-child) td {
+  border-top: 2px solid #c4cdd9;
+}
+
 /* Sticky employee column */
 .report-table .report-table__col-employee,
 .report-table .report-table__cell-employee {
@@ -329,6 +334,60 @@
 
 .report-table .report-table__table tbody tr:hover .report-table__cell-employee {
   background: #fafcff;
+}
+
+/* ── Distribution table (Skill Distribution by P-level) ── */
+.report-table .report-table__table th.report-table__group--distribution {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #1e40af;
+  text-align: center;
+  border-bottom: 1px solid #bfdbfe;
+  border-left: 2px solid #bfdbfe;
+  border-right: 2px solid #bfdbfe;
+  font-size: 0.72rem;
+  text-transform: none;
+}
+
+.report-table .report-table__table th.report-table__col-level {
+  text-align: center;
+  color: #1e40af;
+  background: #f0f7ff;
+}
+
+.report-table .report-table__table td.report-table__cell-count {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Location filter ── */
+.report-table .report-table__location-filter {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.report-table .report-table__location-btn {
+  padding: 5px 16px;
+  border: 1.5px solid var(--report-table-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--report-table-text-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.report-table .report-table__location-btn:hover {
+  border-color: var(--report-table-accent);
+  color: var(--report-table-accent);
+}
+
+.report-table .report-table__location-btn--active {
+  border-color: var(--report-table-accent);
+  background: var(--report-table-accent);
+  color: #fff;
 }
 
 /* ── Responsive ── */

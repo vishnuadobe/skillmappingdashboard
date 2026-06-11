@@ -177,34 +177,34 @@ function renderTierTable(body, employees, proficiencyLevels, skillRarity) {
   thead.append(groupRow, subRow);
   table.append(thead);
 
-  // ── Body: one row per skill, name spanning the employee's rows. ──
+  // ── Body: skills zipped row-by-row across tiers so entries align side-by-side
+  //    (row 0 = first skill of each tier, row 1 = second, …). Employee name
+  //    spans all rows for that employee. A dark rule separates employees.
   const tbody = document.createElement('tbody');
   employees.forEach((emp) => {
-    const skills = sortedTierSkills(emp, skillRarity);
+    // Group skills by tier, sorted alphabetically within each tier.
+    const byTier = new Map(RARITY_TIERS.map((t) => [t.id, []]));
+    emp.skills.forEach((skill) => {
+      const tierId = skillRarity?.get(skill.name)?.tier?.id;
+      if (tierId && byTier.has(tierId)) byTier.get(tierId).push(skill);
+    });
+    byTier.forEach((skills) => skills.sort((a, b) => a.name.localeCompare(b.name)));
 
-    if (skills.length === 0) {
-      const tr = document.createElement('tr');
-      tr.append(createElement('td', 'report-table__cell-employee', emp.name));
-      RARITY_TIERS.forEach((tier) => tr.append(
-        createElement('td', `report-table__tier report-table__tier--${tier.id} report-table__tier--lead`),
-        createElement('td', `report-table__tier report-table__tier--${tier.id} report-table__tier--trail`),
-      ));
-      tbody.append(tr);
-      return;
-    }
+    const rowCount = Math.max(...[...byTier.values()].map((s) => s.length), 1);
 
-    skills.forEach((skill, index) => {
+    for (let i = 0; i < rowCount; i += 1) {
       const tr = document.createElement('tr');
-      if (index === 0) {
+      if (i === 0) {
+        tr.classList.add('report-table__row--emp-start');
         const nameTd = createElement('td', 'report-table__cell-employee', emp.name);
-        nameTd.rowSpan = skills.length;
+        nameTd.rowSpan = rowCount;
         tr.append(nameTd);
       }
-      const skillTierId = skillRarity?.get(skill.name)?.tier?.id;
       RARITY_TIERS.forEach((tier) => {
+        const skill = byTier.get(tier.id)?.[i];
         const skillTd = createElement('td', `report-table__tier report-table__tier--${tier.id} report-table__tier--lead`);
         const monthsTd = createElement('td', `report-table__tier report-table__tier--${tier.id} report-table__tier--trail`);
-        if (tier.id === skillTierId) {
+        if (skill) {
           const name = createElement('span', 'report-table__skill-label', skill.name);
           const initial = getLevelInitial(proficiencyLevels, skill.proficiencyLevel);
           if (initial) {
@@ -217,12 +217,234 @@ function renderTierTable(body, employees, proficiencyLevels, skillRarity) {
         tr.append(skillTd, monthsTd);
       });
       tbody.append(tr);
-    });
+    }
   });
   table.append(tbody);
 
   tableWrapper.append(table);
   body.append(tableWrapper);
+}
+
+// Dummy skill-report used in test/local environments so the table is always
+// populated without needing the real API.  10 employees are spread between
+// Noida and Bangalore and carry skills that deliberately land in each of the
+// four rarity tiers once the org-wide holder counts are computed:
+//   Generic  (≥50%): CSS(9), HTML(10), JavaScript(7)
+//   Niche    (≥30%): React(4), TypeScript(3)
+//   Super niche (≥20%): Vue(2), GraphQL(2)
+//   Ultra niche (≥10%): WebGL(1)
+const DUMMY_SKILL_REPORT = {
+  employees: [
+    {
+      name: 'Atul Bansal',
+      email: 'atul.bansal',
+      skills: [
+        { name: 'CSS', proficiencyLevel: 4, expInMonths: 48 },
+        { name: 'HTML', proficiencyLevel: 4, expInMonths: 36 },
+        { name: 'JavaScript', proficiencyLevel: 3, expInMonths: 24 },
+        { name: 'React', proficiencyLevel: 3, expInMonths: 18 },
+        { name: 'GraphQL', proficiencyLevel: 2, expInMonths: 12 },
+      ],
+    },
+    {
+      name: 'Priya Sharma',
+      email: 'priya.sharma',
+      skills: [
+        { name: 'CSS', proficiencyLevel: 3, expInMonths: 36 },
+        { name: 'HTML', proficiencyLevel: 3, expInMonths: 24 },
+        { name: 'JavaScript', proficiencyLevel: 2, expInMonths: 18 },
+        { name: 'TypeScript', proficiencyLevel: 2, expInMonths: 15 },
+        { name: 'Vue', proficiencyLevel: 2, expInMonths: 10 },
+      ],
+    },
+    {
+      name: 'Rahul Verma',
+      email: 'rahul.verma',
+      skills: [
+        { name: 'CSS', proficiencyLevel: 2, expInMonths: 24 },
+        { name: 'HTML', proficiencyLevel: 2, expInMonths: 18 },
+        { name: 'JavaScript', proficiencyLevel: 2, expInMonths: 14 },
+        { name: 'React', proficiencyLevel: 2, expInMonths: 12 },
+        { name: 'Vue', proficiencyLevel: 1, expInMonths: 8 },
+      ],
+    },
+    {
+      name: 'Sneha Patel',
+      email: 'sneha.patel',
+      skills: [
+        { name: 'CSS', proficiencyLevel: 4, expInMonths: 40 },
+        { name: 'HTML', proficiencyLevel: 3, expInMonths: 30 },
+        { name: 'TypeScript', proficiencyLevel: 3, expInMonths: 20 },
+        { name: 'React', proficiencyLevel: 2, expInMonths: 16 },
+        { name: 'GraphQL', proficiencyLevel: 1, expInMonths: 8 },
+      ],
+    },
+    {
+      name: 'Kiran Kumar',
+      email: 'kiran.kumar',
+      skills: [
+        { name: 'CSS', proficiencyLevel: 3, expInMonths: 28 },
+        { name: 'HTML', proficiencyLevel: 3, expInMonths: 22 },
+        { name: 'JavaScript', proficiencyLevel: 3, expInMonths: 20 },
+        { name: 'TypeScript', proficiencyLevel: 2, expInMonths: 12 },
+      ],
+    },
+    {
+      name: 'Divya Nair',
+      email: 'divya.nair',
+      skills: [
+        { name: 'CSS', proficiencyLevel: 2, expInMonths: 20 },
+        { name: 'HTML', proficiencyLevel: 2, expInMonths: 16 },
+        { name: 'JavaScript', proficiencyLevel: 2, expInMonths: 12 },
+        { name: 'React', proficiencyLevel: 2, expInMonths: 10 },
+      ],
+    },
+    {
+      name: 'Amit Singh',
+      email: 'amit.singh',
+      skills: [
+        { name: 'CSS', proficiencyLevel: 3, expInMonths: 32 },
+        { name: 'HTML', proficiencyLevel: 3, expInMonths: 26 },
+        { name: 'JavaScript', proficiencyLevel: 2, expInMonths: 18 },
+      ],
+    },
+    {
+      name: 'Pooja Iyer',
+      email: 'pooja.iyer',
+      skills: [
+        { name: 'CSS', proficiencyLevel: 1, expInMonths: 12 },
+        { name: 'HTML', proficiencyLevel: 1, expInMonths: 10 },
+      ],
+    },
+    {
+      name: 'Vijay Reddy',
+      email: 'vijay.reddy',
+      skills: [
+        { name: 'CSS', proficiencyLevel: 2, expInMonths: 18 },
+        { name: 'HTML', proficiencyLevel: 2, expInMonths: 14 },
+        { name: 'JavaScript', proficiencyLevel: 1, expInMonths: 10 },
+        { name: 'WebGL', proficiencyLevel: 1, expInMonths: 6 },
+      ],
+    },
+    {
+      name: 'Lakshmi Das',
+      email: 'lakshmi.das',
+      skills: [
+        { name: 'HTML', proficiencyLevel: 2, expInMonths: 14 },
+        { name: 'JavaScript', proficiencyLevel: 1, expInMonths: 10 },
+      ],
+    },
+  ],
+  metadata: {
+    proficiencyLevels: [
+      { level: 1, label: 'Foundational' },
+      { level: 2, label: 'Developing' },
+      { level: 3, label: 'Professional' },
+      { level: 4, label: 'Expert' },
+      { level: 5, label: 'Master' },
+    ],
+  },
+};
+
+// Dummy P-level distribution keyed by location → tier → level → count.
+// Replace with a fetch from /skill-distribution-mapping.json (da.live sheet).
+const DUMMY_DISTRIBUTION = new Map([
+  ['noida', new Map([
+    ['generic', new Map([['P20', 5], ['P30', 3], ['P40', 2], ['P50', 1]])],
+    ['niche', new Map([['P20', 2], ['P30', 2], ['P40', 1], ['P50', 0]])],
+    ['super-niche', new Map([['P20', 1], ['P30', 1], ['P40', 0], ['P50', 0]])],
+    ['ultra-niche', new Map([['P20', 0], ['P30', 0], ['P40', 0], ['P50', 0]])],
+  ])],
+  ['bangalore', new Map([
+    ['generic', new Map([['P20', 3], ['P30', 2], ['P40', 1], ['P50', 0]])],
+    ['niche', new Map([['P20', 2], ['P30', 1], ['P40', 1], ['P50', 1]])],
+    ['super-niche', new Map([['P20', 1], ['P30', 0], ['P40', 1], ['P50', 0]])],
+    ['ultra-niche', new Map([['P20', 1], ['P30', 0], ['P40', 0], ['P50', 0]])],
+  ])],
+]);
+
+/**
+ * Renders the "Skill Distribution" table with a location filter toggle.
+ * Rows are rarity tiers, columns are P-level bands. Locations and levels are
+ * authorable via "locations" and "levels" config rows in the da.live block.
+ * Currently uses dummy data — swap DUMMY_DISTRIBUTION for a real fetch when
+ * the manager provides the dataset.
+ */
+function renderDistributionTable(body, config) {
+  const levels = (config.levels || 'P20,P30,P40,P50').split(',').map((s) => s.trim());
+  const locationNames = (config.locations || 'Noida,Bangalore').split(',').map((s) => s.trim());
+
+  body.append(createElement('h3', 'report-table__subheading', 'Skill Distribution'));
+
+  // ── Location filter buttons ──
+  const filterBar = createElement('div', 'report-table__location-filter');
+  locationNames.forEach((loc, idx) => {
+    const btn = createElement('button', `report-table__location-btn${idx === 0 ? ' report-table__location-btn--active' : ''}`, loc);
+    btn.type = 'button';
+    filterBar.append(btn);
+  });
+
+  // ── Table ──
+  const tableWrapper = createElement('div', 'report-table__table-wrapper');
+  const table = createElement('table', 'report-table__table report-table__table--distribution');
+
+  // Header row 1: "By" | "Skill Distribution" (colspan)
+  // Header row 2: "Role" | one th per level
+  const thead = document.createElement('thead');
+  const groupRow = document.createElement('tr');
+  groupRow.append(createElement('th', 'report-table__col-employee', 'By'));
+  const distTh = createElement('th', 'report-table__group report-table__group--distribution', 'Skill Distribution');
+  distTh.colSpan = levels.length;
+  groupRow.append(distTh);
+  const subRow = document.createElement('tr');
+  subRow.append(createElement('th', 'report-table__col-employee', 'Role'));
+  levels.forEach((level) => subRow.append(createElement('th', 'report-table__col-level', level)));
+  thead.append(groupRow, subRow);
+  table.append(thead);
+
+  // ── Body: one row per tier, cells updated on location change ──
+  const tbody = document.createElement('tbody');
+  const countCells = new Map(); // `${tierId}-${level}` → td
+
+  RARITY_TIERS.forEach((tier) => {
+    const tr = document.createElement('tr');
+    tr.append(createElement('td', 'report-table__cell-employee', tier.label));
+    levels.forEach((level) => {
+      const td = createElement('td', 'report-table__cell-count');
+      countCells.set(`${tier.id}-${level}`, td);
+      tr.append(td);
+    });
+    tbody.append(tr);
+  });
+  table.append(tbody);
+  tableWrapper.append(table);
+
+  // Populate cells for the given location label
+  function updateLocation(loc) {
+    const locData = DUMMY_DISTRIBUTION.get(loc.toLowerCase());
+    RARITY_TIERS.forEach((tier) => {
+      levels.forEach((level) => {
+        const td = countCells.get(`${tier.id}-${level}`);
+        const count = locData?.get(tier.id)?.get(level);
+        if (td) td.textContent = count != null ? String(count) : '—';
+      });
+    });
+  }
+
+  // Render first location by default
+  updateLocation(locationNames[0]);
+
+  // Switch location on filter click
+  filterBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.report-table__location-btn');
+    if (!btn) return;
+    filterBar.querySelectorAll('.report-table__location-btn').forEach((b) => {
+      b.classList.toggle('report-table__location-btn--active', b === btn);
+    });
+    updateLocation(btn.textContent.trim());
+  });
+
+  body.append(filterBar, tableWrapper);
 }
 
 function renderTable(block, config, data, skillRarity) {
@@ -258,6 +480,7 @@ function renderTable(block, config, data, skillRarity) {
   body.append(toolbar);
 
   renderTierTable(body, employees, proficiencyLevels, skillRarity);
+  renderDistributionTable(body, config);
 
   wrapper.append(body);
   block.append(wrapper);
@@ -296,10 +519,14 @@ export default async function decorate(block) {
   }
 
   try {
-    const data = await getSkillReport();
+    const data = isTestEnvironment() ? DUMMY_SKILL_REPORT : await getSkillReport();
     // Rarity is computed across the whole workforce before filtering to the team.
     const skillRarity = computeSkillRarity(data.employees);
-    const employees = await filterToDirectReports(data.employees, user);
+    // In test environments the dummy employees won't match any real direct-report
+    // LDAP, so skip the filter and show all dummy data as-is.
+    const employees = isTestEnvironment()
+      ? data.employees
+      : await filterToDirectReports(data.employees, user);
 
     if (employees.length === 0) {
       block.textContent = '';
