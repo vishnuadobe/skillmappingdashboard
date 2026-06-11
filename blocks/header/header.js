@@ -1,4 +1,5 @@
-import logout from '../../scripts/auth.js';
+import logout, { getSessionUser } from '../../scripts/auth.js';
+import buildViewToggle from '../../scripts/view-toggle.js';
 
 export default async function decorate(block) {
   const nav = document.createElement('nav');
@@ -46,4 +47,13 @@ export default async function decorate(block) {
   nav.append(brand, actions);
   block.textContent = '';
   block.append(nav);
+
+  // Inject the view toggle for managers, left of the logout button.
+  try {
+    const user = await getSessionUser();
+    if (user?.isManager) {
+      const currentView = window.location.pathname.startsWith('/employee-details') ? 'report' : 'entry';
+      actions.prepend(buildViewToggle(currentView));
+    }
+  } catch { /* leave header unchanged if session lookup fails */ }
 }

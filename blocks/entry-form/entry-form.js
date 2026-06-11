@@ -5,7 +5,6 @@ import {
   getEmployeeSkillReport,
 } from '../../scripts/api.js';
 import { getSessionUser } from '../../scripts/auth.js';
-import buildViewToggle from '../../scripts/view-toggle.js';
 
 function parseSpecializations(value) {
   if (Array.isArray(value)) return value;
@@ -167,14 +166,11 @@ export default async function decorate(block) {
   const [user, skillList, specializationList] = await Promise.all([
     getSessionUser(), fetchSkillList(), fetchSpecializations(),
   ]);
-  const isManagerUser = !!user?.isManager;
-
   const blankInput = () => ({
     skill: '', skillOther: '', months: 0, specializations: [], cert: '', certTitle: '', certImageUrl: '',
   });
 
   const state = {
-    mode: 'form',
     busy: false,
     message: '',
     messageType: '',
@@ -184,7 +180,11 @@ export default async function decorate(block) {
     rows: [],
     savedRows: [],
     savedSkillNames: [],
+    // Index in `state.rows` being edited inline (pending change, not yet POSTed)
     editingIndex: -1,
+    // Index in `state.savedRows` being edited inline — Save POSTs immediately
+    // and refreshes the previously-submitted list.
+    editingSavedIndex: -1,
     input: blankInput(),
   };
 
@@ -280,16 +280,108 @@ export default async function decorate(block) {
       certImageUrl: s.certImageUrl || '',
     };
     state.editingIndex = i;
+    state.editingSavedIndex = -1;
     state.message = '';
     render();
   }
 
   function cancelEdit() {
     state.editingIndex = -1;
+    state.editingSavedIndex = -1;
     state.input = blankInput();
     state.message = '';
     state.messageType = '';
     render();
+  }
+
+  // Loads the employee's already-submitted skills for the
+  // "Previously submitted skills" list shown below the form. Pass
+  // `{ silent: true }` from callers that will render themselves afterwards
+  // (e.g. handleSubmit, saveSavedRowEdit) to avoid an extra repaint with
+  // a stale `state.rows`.
+  async function loadPreviousEntries({ silent = false } = {}) {
+    try {
+      const res = await getEmployeeSkillReport(state.employeeId);
+      const data = res?.data || {};
+      if (data.email) state.email = data.email;
+      if (data.name) state.name = data.name;
+      state.savedRows = (data.skills || []).map(mapServerSkillToRow);
+      state.savedSkillNames = state.savedRows.map((r) => r.skillName);
+      if (!silent) render();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Could not load previous entries:', err);
+    }
+  }
+
+  // Pre-fills the input row from a previously-submitted skill so the user can
+  // edit it. The form's bottom input row is hidden while this is active and the
+  // input row appears inline at that saved row's position.
+  function editSavedRow(i) {
+    const s = state.savedRows[i];
+    if (!s) return;
+    const isPreset = skillList.includes(s.skillName);
+    state.input = {
+      skill: isPreset ? s.skillName : 'other',
+      skillOther: isPreset ? '' : s.skillName,
+      months: s.months,
+      specializations: [...(s.specializations || [])],
+      cert: s.cert,
+      certTitle: s.certTitle,
+      certImageUrl: s.certImageUrl || '',
+    };
+    state.editingIndex = -1;
+    state.editingSavedIndex = i;
+    state.message = '';
+    state.messageType = '';
+    render();
+  }
+
+  // Option B: clicking Save on a saved-row edit POSTs that single skill
+  // immediately and refreshes the previously-submitted list. Validation errors
+  // throw so the click handler's outer catch surfaces them as a red banner.
+  async function saveSavedRowEdit() {
+    validateInput();
+    state.busy = true;
+    state.message = '';
+    state.messageType = '';
+    render();
+    try {
+      const skillName = getInputSkillName();
+      const months = Number(state.input.months);
+      const level = await getLevelFromExperienceMonths(months);
+      const skill = {
+        name: skillName,
+        expInMonths: months,
+        proficiencyLevel: level?.level || 1,
+      };
+      if (state.input.specializations?.length) {
+        skill.specializations = [...state.input.specializations];
+      }
+      if (state.input.cert === 'yes') {
+        skill.certification = { name: state.input.certTitle.trim() };
+        if (state.input.certImageUrl) skill.certification.imageUrl = state.input.certImageUrl;
+      }
+      const payload = buildSkillsPayload(state.employeeId, state.email, state.name, [skill]);
+      await submitSkillReport(payload);
+      await loadPreviousEntries({ silent: true });
+      state.editingSavedIndex = -1;
+      state.input = blankInput();
+      state.message = `"${skillName}" updated successfully.`;
+      state.messageType = 'success';
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Saved-row edit failed:', err);
+      const status = err.status ? ` (HTTP ${err.status})` : '';
+      const reason = err.detail || err.message;
+      state.message = reason
+        ? `Update failed${status}: ${reason}`
+        : `Update failed${status}. Check the browser console for details.`;
+      state.messageType = 'error';
+    } finally {
+      state.busy = false;
+      render();
+    }
   }
 
   async function buildPayload() {
@@ -312,35 +404,6 @@ export default async function decorate(block) {
     return buildSkillsPayload(state.employeeId, state.email, state.name, skillsData);
   }
 
-  async function loadSavedRows() {
-    const res = await getEmployeeSkillReport(state.employeeId);
-    const data = res?.data || {};
-    if (data.email) state.email = data.email;
-    if (data.name) state.name = data.name;
-    state.rows = (data.skills || []).map(mapServerSkillToRow);
-    state.savedRows = (data.skills || []).map(mapServerSkillToRow);
-    state.savedSkillNames = state.rows.map((r) => r.skillName);
-    state.editingIndex = -1;
-    state.input = blankInput();
-  }
-
-  // Loads the employee's already-submitted skills for the read-only
-  // "Previously submitted skills" list shown below the form.
-  async function loadPreviousEntries() {
-    try {
-      const res = await getEmployeeSkillReport(state.employeeId);
-      const data = res?.data || {};
-      if (data.email) state.email = data.email;
-      if (data.name) state.name = data.name;
-      state.savedRows = (data.skills || []).map(mapServerSkillToRow);
-      state.savedSkillNames = state.savedRows.map((r) => r.skillName);
-      render();
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('Could not load previous entries:', err);
-    }
-  }
-
   async function handleSubmit() {
     state.busy = true;
     state.message = '';
@@ -349,18 +412,14 @@ export default async function decorate(block) {
     try {
       const payload = await buildPayload();
       await submitSkillReport(payload);
-      if (state.mode !== 'saved') {
-        try {
-          await loadSavedRows();
-        } catch (loadErr) {
-          // eslint-disable-next-line no-console
-          console.error('Could not reload saved skills:', loadErr);
-        }
-      } else {
-        state.savedSkillNames = state.rows.map((r) => r.skillName);
-      }
-      state.mode = 'saved';
-      state.message = 'Changes saved successfully.';
+      // Refresh the previously-submitted list from the server so the user sees
+      // their just-submitted skills there. Pending `state.rows` is cleared so
+      // the form is ready for the next entries.
+      await loadPreviousEntries({ silent: true });
+      state.rows = [];
+      state.editingIndex = -1;
+      state.input = blankInput();
+      state.message = 'Skills submitted successfully.';
       state.messageType = 'success';
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -497,12 +556,16 @@ export default async function decorate(block) {
     // ── Add / Save (+ Cancel) buttons ──
     const addTd = document.createElement('td');
     addTd.className = 'entry-form__action-cell';
-    const isEditing = state.editingIndex >= 0;
+    const isEditingPending = state.editingIndex >= 0;
+    const isEditingSaved = state.editingSavedIndex >= 0;
+    const isEditing = isEditingPending || isEditingSaved;
     const addBtn = createElement('button', 'entry-form__add-btn', isEditing ? 'Save' : '+ Add');
     addBtn.type = 'button';
-    addBtn.addEventListener('click', () => {
+    if (state.busy) addBtn.disabled = true;
+    addBtn.addEventListener('click', async () => {
       try {
-        commitRow();
+        if (isEditingSaved) await saveSavedRowEdit();
+        else commitRow();
       } catch (err) {
         state.message = err.message;
         state.messageType = 'error';
@@ -513,6 +576,7 @@ export default async function decorate(block) {
       const editActions = createElement('div', 'entry-form__edit-actions');
       const cancelBtn = createElement('button', 'entry-form__cancel-btn', 'Cancel');
       cancelBtn.type = 'button';
+      if (state.busy) cancelBtn.disabled = true;
       cancelBtn.addEventListener('click', cancelEdit);
       editActions.append(addBtn, cancelBtn);
       addTd.append(editActions);
@@ -524,10 +588,13 @@ export default async function decorate(block) {
     return tr;
   }
 
-  function renderDataRows(rows, showActions = true, showDelete = showActions) {
+  function renderDataRows(rows, showActions = true, showDelete = showActions, tableKind = 'form') {
     return rows.map((s, i) => {
-      // Editing happens inline — replace the data row with the input row
-      if (showActions && state.editingIndex === i) return renderInputRow();
+      // Editing happens inline — replace the data row with the input row. The
+      // swap is gated on which table this is so the form table only swaps for
+      // a pending-row edit and the saved table only for a saved-row edit.
+      if (showActions && tableKind === 'form' && state.editingIndex === i) return renderInputRow();
+      if (showActions && tableKind === 'saved' && state.editingSavedIndex === i) return renderInputRow();
 
       const expLabel = `${s.months} month${s.months === 1 ? '' : 's'}`;
 
@@ -585,7 +652,9 @@ export default async function decorate(block) {
       editPath.setAttribute('d', 'M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z');
       editSvg.append(editPath);
       editBtn.append(editSvg);
-      editBtn.addEventListener('click', () => editRow(i));
+      editBtn.addEventListener('click', () => (
+        tableKind === 'saved' ? editSavedRow(i) : editRow(i)
+      ));
 
       const delBtn = document.createElement('button');
       delBtn.className = 'entry-form__icon-btn entry-form__icon-btn--del';
@@ -629,6 +698,7 @@ export default async function decorate(block) {
     showActions = true,
     showInputRow = showActions,
     showDelete = showActions,
+    tableKind = 'form',
   ) {
     const tableWrap = createElement('div', 'entry-form__table-wrap');
     const table = document.createElement('table');
@@ -643,10 +713,12 @@ export default async function decorate(block) {
     table.append(thead);
 
     const tbody = document.createElement('tbody');
-    renderDataRows(rows, showActions, showDelete).forEach((tr) => tbody.append(tr));
+    renderDataRows(rows, showActions, showDelete, tableKind).forEach((tr) => tbody.append(tr));
     table.append(tbody);
 
-    if (showInputRow && state.editingIndex < 0) {
+    // The form table's bottom input row hides whenever an inline edit is
+    // active on either table — the input row appears at the editing row instead.
+    if (showInputRow && state.editingIndex < 0 && state.editingSavedIndex < 0) {
       const tfoot = document.createElement('tfoot');
       tfoot.append(renderInputRow());
       table.append(tfoot);
@@ -660,8 +732,9 @@ export default async function decorate(block) {
     if (!state.savedRows.length) return;
     const section = createElement('div', 'entry-form__previous');
     section.append(createElement('h3', 'entry-form__previous-title', 'Previously submitted skills'));
-    // Read-only: no actions, no input row, no delete.
-    section.append(renderTable(state.savedRows, false, false, false));
+    // Edit allowed (✏ → inline edit, Save POSTs immediately). Delete is not
+    // shown yet — backend has no DELETE endpoint, see progress.md.
+    section.append(renderTable(state.savedRows, true, false, false, 'saved'));
     wrapper.append(section);
   }
 
@@ -676,7 +749,9 @@ export default async function decorate(block) {
       state.busy ? 'Submitting…' : 'Submit',
     );
     submitBtn.type = 'button';
-    submitBtn.disabled = state.rows.length === 0 || state.busy;
+    // Disable Submit while a saved-row edit is in flight so the form doesn't
+    // race with the immediate-save POST.
+    submitBtn.disabled = state.rows.length === 0 || state.busy || state.editingSavedIndex >= 0;
     submitBtn.addEventListener('click', handleSubmit);
     footer.append(submitBtn);
     wrapper.append(footer);
@@ -684,47 +759,9 @@ export default async function decorate(block) {
     renderPreviousEntries(wrapper);
   }
 
-  function renderSaved(wrapper) {
-    const banner = createElement('div', 'entry-form__saved-banner');
-    banner.append(
-      createElement('span', 'entry-form__saved-icon', '✓'),
-      createElement('span', 'entry-form__saved-text', 'Skills submitted successfully.'),
-    );
-    wrapper.append(banner);
-
-    wrapper.append(createElement(
-      'p',
-      'entry-form__saved-sub',
-      'Your saved skills are below. Use “+ Add more skills” to submit additional entries.',
-    ));
-
-    if (state.messageType === 'error') renderMessage(wrapper);
-    // No actions column in saved view (edit button disabled, no delete)
-    wrapper.append(renderTable(state.rows, false, false, false));
-
-    const footer = createElement('div', 'entry-form__form-footer');
-
-    const addMoreBtn = createElement('button', 'entry-form__button entry-form__button--primary', '+ Add more skills');
-    addMoreBtn.type = 'button';
-    addMoreBtn.disabled = state.busy;
-    addMoreBtn.addEventListener('click', () => {
-      state.mode = 'form';
-      state.message = '';
-      state.messageType = '';
-      state.rows = [];
-      state.editingIndex = -1;
-      state.input = blankInput();
-      render();
-    });
-
-    footer.append(addMoreBtn);
-    wrapper.append(footer);
-  }
-
   render = function renderEntryForm() {
     document.querySelectorAll('.entry-form__multi-panel').forEach((p) => multiPanelCleanups.get(p)?.());
     block.textContent = '';
-    if (isManagerUser) block.append(buildViewToggle('entry'));
     const wrapper = createElement('div', 'entry-form__wrapper');
 
     const header = createElement('div', 'entry-form__header');
@@ -732,18 +769,12 @@ export default async function decorate(block) {
     header.append(
       createElement('span', 'entry-form__heading-accent'),
       createElement('h2', 'entry-form__heading', displayName),
+      createElement('p', 'entry-form__heading-sub', config.heading || 'Submit your skills'),
     );
-    if (state.mode !== 'success') {
-      header.append(createElement('p', 'entry-form__heading-sub', config.heading || 'Submit your skills'));
-    }
     wrapper.append(header);
 
     const body = createElement('div', 'entry-form__body');
-    if (state.mode === 'saved') {
-      renderSaved(body);
-    } else {
-      renderForm(body);
-    }
+    renderForm(body);
     wrapper.append(body);
     block.append(wrapper);
   };

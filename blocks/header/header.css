@@ -1,4 +1,4 @@
-.header nav {
+.header > nav {
   position: fixed;
   top: 0;
   left: 0;
@@ -43,6 +43,11 @@
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* Reset the toggle's block margin when it lives inside the header nav */
+.header .header__actions .view-toggle {
+  margin: 0;
 }
 
 /* Logout button — explicit reset to avoid global button inheritance conflicts */

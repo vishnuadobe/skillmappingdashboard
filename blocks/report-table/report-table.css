@@ -24,8 +24,8 @@
 .report-table .report-table__header {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 32px 28px 28px;
+  gap: 6px;
+  padding: 18px 28px 16px;
   background: linear-gradient(135deg, #f0f6ff 0%, #fafcff 100%);
   border-bottom: 1px solid var(--report-table-border);
 }
@@ -209,35 +209,87 @@
 .report-table .report-table__table th.report-table__group {
   text-align: center;
   border-bottom: 1px solid #edf1f6;
+
+  /* Colour-coded frame: each tier's banner is bordered left+right in its accent
+     (its column cells continue the frame below). */
+  border-left: 2px solid var(--tier-accent);
+  border-right: 2px solid var(--tier-accent);
   font-size: 0.72rem;
   text-transform: none;
 }
 
-.report-table .report-table__table th.report-table__group:not(:first-of-type) {
-  border-left: 2px solid var(--report-table-surface);
+/* Per-tier accent colour, shared by the banner and its column cells, ramping
+   light (common) → deep (rare). Set as a variable so the frame borders below
+   pick it up automatically. */
+.report-table .report-table__group--generic,
+.report-table .report-table__tier--generic {
+  --tier-accent: #fdeaed;
+}
+
+.report-table .report-table__group--niche,
+.report-table .report-table__tier--niche {
+  --tier-accent: #fbe0e4;
+}
+
+.report-table .report-table__group--super-niche,
+.report-table .report-table__tier--super-niche {
+  --tier-accent: #f9d6dc;
+}
+
+.report-table .report-table__group--ultra-niche,
+.report-table .report-table__tier--ultra-niche {
+  --tier-accent: #f5c7cf;
+}
+
+/* The tier's column cells continue the accent frame: lead cell on the left,
+   trail cell on the right. The light grid line stays between the Skill and
+   Months sub-columns. */
+.report-table .report-table__table .report-table__tier.report-table__tier--lead {
+  border-left: 2px solid var(--tier-accent);
+}
+
+.report-table .report-table__table .report-table__tier.report-table__tier--trail {
+  border-right: 2px solid var(--tier-accent);
 }
 
 /* Single rose hue ramping in intensity (light = common → deep = rare), kept
    distinct from the multicolour proficiency badges so the two scales never
    look alike. */
 .report-table .report-table__table th.report-table__group--generic {
-  background: #fff1f2;
+  background: linear-gradient(135deg, #fff7f8 0%, #fff1f2 100%);
   color: #9f1239;
 }
 
 .report-table .report-table__table th.report-table__group--niche {
-  background: #ffe4e6;
+  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
   color: #9f1239;
 }
 
 .report-table .report-table__table th.report-table__group--super-niche {
-  background: #fecdd3;
+  background: linear-gradient(135deg, #ffe9eb 0%, #fed7dc 100%);
   color: #9f1239;
 }
 
 .report-table .report-table__table th.report-table__group--ultra-niche {
-  background: #9f1239;
-  color: #fff;
+  background: linear-gradient(135deg, #fee0e4 0%, #fecdd3 100%);
+  color: #9f1239;
+}
+
+/* ── Tier table (skills by rarity) ── */
+.report-table .report-table__subheading {
+  margin: 12px 0 0;
+  color: var(--report-table-text);
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.report-table .report-table__table--tiers .report-table__skill-label {
+  font-weight: 600;
+}
+
+.report-table .report-table__table--tiers .report-table__skill-label + .report-table__badge {
+  margin-left: 8px;
 }
 
 .report-table .report-table__table tbody tr:last-child td {
@@ -275,10 +327,10 @@
 /* ── Responsive ── */
 @media (width >= 900px) {
   .report-table .report-table__header {
-    padding: 36px 36px 30px;
+    padding: 22px 36px 18px;
   }
 
   .report-table .report-table__body {
-    padding: 32px 36px;
+    padding: 24px 36px;
   }
 }

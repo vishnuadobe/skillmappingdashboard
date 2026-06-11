@@ -3,7 +3,7 @@
   position: fixed;
   inset: var(--nav-height) 0 0 0;
   margin: 0 !important;
-  padding-top: 24px;
+  padding-top: 8px;
   box-sizing: border-box;
   overflow-y: auto;
 }
@@ -22,7 +22,7 @@
   --entry-form-shadow: 0 24px 48px rgb(15 23 42 / 10%);
   --entry-form-focus: 0 0 0 3px rgb(20 115 230 / 12%);
 
-  padding-top: 40px;
+  padding-top: 8px;
 }
 
 .entry-form .entry-form__wrapper {
@@ -37,8 +37,8 @@
 .entry-form .entry-form__header {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 32px 28px 28px;
+  gap: 6px;
+  padding: 18px 28px 16px;
   background: linear-gradient(135deg, #f0f6ff 0%, #fafcff 100%);
   border-bottom: 1px solid var(--entry-form-border);
 }
@@ -65,7 +65,7 @@
   height: 4px;
   border-radius: 4px;
   background: var(--entry-form-accent);
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 
 .entry-form .entry-form__meta {
@@ -542,39 +542,6 @@
   color: #1d4ed8;
 }
 
-/* ── Saved view ── */
-.entry-form .entry-form__saved-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0 0 8px;
-  padding: 14px 18px;
-  border-radius: 14px;
-  background: #ecfdf5;
-  color: var(--entry-form-success);
-  font-weight: 700;
-  font-size: 0.95rem;
-}
-
-.entry-form .entry-form__saved-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background: var(--entry-form-success);
-  color: #fff;
-  font-size: 0.8rem;
-  flex-shrink: 0;
-}
-
-.entry-form .entry-form__saved-sub {
-  margin: 0 0 20px;
-  color: var(--entry-form-text-muted);
-  font-size: 0.9rem;
-}
-
 /* ── Previously submitted skills (read-only, below the form) ── */
 .entry-form .entry-form__previous {
   margin-top: 28px;
@@ -592,10 +559,10 @@
 /* ── Responsive ── */
 @media (width >= 900px) {
   .entry-form .entry-form__header {
-    padding: 36px 36px 30px;
+    padding: 22px 36px 18px;
   }
 
   .entry-form .entry-form__body {
-    padding: 32px 36px;
+    padding: 24px 36px;
   }
 }

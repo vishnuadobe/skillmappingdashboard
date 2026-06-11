@@ -1,7 +1,6 @@
 import { getSkillReport } from '../../scripts/api.js';
 import { getSessionUser, isTestEnvironment } from '../../scripts/auth.js';
 import { getDirectReports, normalizeLdap } from '../../scripts/employee-mapping.js';
-import buildViewToggle from '../../scripts/view-toggle.js';
 
 function readBlockConfig(block) {
   return [...block.children].reduce((config, row) => {
@@ -21,22 +20,6 @@ function createElement(tag, className, text) {
   return el;
 }
 
-function buildMatrix(employees, skillRarity) {
-  const skillNames = [...new Set(employees.flatMap((emp) => emp.skills.map((s) => s.name)))];
-  // Rarest skills first (lowest workforce share), alphabetical within a tier.
-  skillNames.sort((a, b) => {
-    const shareA = skillRarity?.get(a)?.share ?? 1;
-    const shareB = skillRarity?.get(b)?.share ?? 1;
-    return shareA - shareB || a.localeCompare(b);
-  });
-  const rows = employees.map((emp) => {
-    const skillMap = {};
-    emp.skills.forEach((s) => { skillMap[s.name] = s; });
-    return { name: emp.name, email: emp.email, skillMap };
-  });
-  return { skillNames, rows };
-}
-
 // Rarity tiers by share of the workforce holding a skill (most → least common).
 // First tier whose `minShare` the skill meets wins.
 const RARITY_TIERS = [
@@ -49,6 +32,19 @@ const RARITY_TIERS = [
 function getRarityTier(share) {
   // The last tier has minShare 0, so a match is always found.
   return RARITY_TIERS.find((tier) => share >= tier.minShare);
+}
+
+const TIER_INDEX = new Map(RARITY_TIERS.map((tier, index) => [tier.id, index]));
+
+// An employee's skills ordered by rarity tier (Generic → Ultra niche), then
+// alphabetically within a tier. Shared by the rendered table and the CSV export
+// so both list skills in the same order.
+function sortedTierSkills(emp, skillRarity) {
+  return [...emp.skills].sort((a, b) => {
+    const tierA = TIER_INDEX.get(skillRarity?.get(a.name)?.tier?.id) ?? RARITY_TIERS.length;
+    const tierB = TIER_INDEX.get(skillRarity?.get(b.name)?.tier?.id) ?? RARITY_TIERS.length;
+    return tierA - tierB || a.name.localeCompare(b.name);
+  });
 }
 
 /**
@@ -83,22 +79,45 @@ function getLevelLabel(proficiencyLevels, level) {
   return match ? match.label : '—';
 }
 
-function createLevelBadge(skill, proficiencyLevels) {
-  if (!skill) return createElement('span', 'report-table__badge report-table__badge--none', '—');
-  const label = getLevelLabel(proficiencyLevels, skill.proficiencyLevel);
-  return createElement('span', `report-table__badge report-table__badge--l${skill.proficiencyLevel}`, label);
+// Single-letter proficiency abbreviation (Master → M, Professional → P, …).
+// The boilerplate levels each start with a distinct letter, so the first
+// character is unambiguous.
+function getLevelInitial(proficiencyLevels, level) {
+  const label = getLevelLabel(proficiencyLevels, level);
+  return label && label !== '—' ? label.charAt(0).toUpperCase() : '';
 }
 
-function toCsv(skillNames, rows, proficiencyLevels) {
-  const header = ['Employee', 'Email', ...skillNames];
-  const dataRows = rows.map((row) => [
-    row.name,
-    row.email,
-    ...skillNames.map((name) => {
-      const skill = row.skillMap[name];
-      return skill ? getLevelLabel(proficiencyLevels, skill.proficiencyLevel) : '—';
-    }),
-  ]);
+// Flattens the tier table to CSV with the same column order as on screen:
+// Employee, then a Skill + Months pair per rarity tier. One row per skill, with
+// the skill's level-tagged name and months landing under its matching tier.
+function tierTableToCsv(employees, proficiencyLevels, skillRarity) {
+  const header = ['Employee'];
+  RARITY_TIERS.forEach((tier) => header.push(`${tier.label} Skill`, `${tier.label} Months`));
+
+  const dataRows = [];
+  employees.forEach((emp) => {
+    const skills = sortedTierSkills(emp, skillRarity);
+    if (skills.length === 0) {
+      dataRows.push([emp.name, ...RARITY_TIERS.flatMap(() => ['', ''])]);
+      return;
+    }
+    skills.forEach((skill, index) => {
+      // Mirror the on-screen rowspan: name only on the employee's first row.
+      const row = [index === 0 ? emp.name : ''];
+      const skillTierId = skillRarity?.get(skill.name)?.tier?.id;
+      RARITY_TIERS.forEach((tier) => {
+        if (tier.id === skillTierId) {
+          const initial = getLevelInitial(proficiencyLevels, skill.proficiencyLevel);
+          row.push(initial ? `${skill.name} (${initial})` : skill.name);
+          row.push(skill.expInMonths != null ? `${skill.expInMonths} M` : '');
+        } else {
+          row.push('', '');
+        }
+      });
+      dataRows.push(row);
+    });
+  });
+
   return [header, ...dataRows]
     .map((row) => row.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(','))
     .join('\n');
@@ -114,9 +133,93 @@ function downloadCsv(filename, content) {
   URL.revokeObjectURL(href);
 }
 
+/**
+ * Renders the per-employee "skills by rarity tier" table: one column group per
+ * rarity tier (Generic → Ultra niche), each split into a Skill (with level
+ * initial) and an Experience sub-column. Each of an employee's skills becomes a
+ * row, with its name+level and months placed under the tier that matches its
+ * org-wide rarity; the employee name spans all of their skill rows.
+ * @param {Element} body the block body to append the table into
+ * @param {Array} employees the (filtered) employees to display
+ * @param {Array} proficiencyLevels level metadata from the API
+ * @param {Map} skillRarity per-skill rarity info from computeSkillRarity()
+ */
+function renderTierTable(body, employees, proficiencyLevels, skillRarity) {
+  body.append(createElement('h3', 'report-table__subheading', 'Skills by rarity tier'));
+
+  const tableWrapper = createElement('div', 'report-table__table-wrapper');
+  const table = createElement('table', 'report-table__table report-table__table--tiers');
+
+  // ── Header: Employee (rowspan 2), then a colspan-2 banner per tier, then a
+  //    Skill / Months sub-column row. ──
+  const thead = document.createElement('thead');
+  const groupRow = document.createElement('tr');
+  const employeeTh = createElement('th', 'report-table__col-employee', 'Employee');
+  employeeTh.rowSpan = 2;
+  groupRow.append(employeeTh);
+  const subRow = document.createElement('tr');
+  RARITY_TIERS.forEach((tier) => {
+    const th = createElement('th', `report-table__group report-table__group--${tier.id}`, tier.label);
+    th.colSpan = 2;
+    groupRow.append(th);
+    subRow.append(
+      createElement('th', `report-table__col-skill report-table__tier report-table__tier--${tier.id} report-table__tier--lead`, 'Skill'),
+      createElement('th', `report-table__col-skill report-table__tier report-table__tier--${tier.id} report-table__tier--trail`, 'Months'),
+    );
+  });
+  thead.append(groupRow, subRow);
+  table.append(thead);
+
+  // ── Body: one row per skill, name spanning the employee's rows. ──
+  const tbody = document.createElement('tbody');
+  employees.forEach((emp) => {
+    const skills = sortedTierSkills(emp, skillRarity);
+
+    if (skills.length === 0) {
+      const tr = document.createElement('tr');
+      tr.append(createElement('td', 'report-table__cell-employee', emp.name));
+      RARITY_TIERS.forEach((tier) => tr.append(
+        createElement('td', `report-table__tier report-table__tier--${tier.id} report-table__tier--lead`),
+        createElement('td', `report-table__tier report-table__tier--${tier.id} report-table__tier--trail`),
+      ));
+      tbody.append(tr);
+      return;
+    }
+
+    skills.forEach((skill, index) => {
+      const tr = document.createElement('tr');
+      if (index === 0) {
+        const nameTd = createElement('td', 'report-table__cell-employee', emp.name);
+        nameTd.rowSpan = skills.length;
+        tr.append(nameTd);
+      }
+      const skillTierId = skillRarity?.get(skill.name)?.tier?.id;
+      RARITY_TIERS.forEach((tier) => {
+        const skillTd = createElement('td', `report-table__tier report-table__tier--${tier.id} report-table__tier--lead`);
+        const monthsTd = createElement('td', `report-table__tier report-table__tier--${tier.id} report-table__tier--trail`);
+        if (tier.id === skillTierId) {
+          const name = createElement('span', 'report-table__skill-label', skill.name);
+          const initial = getLevelInitial(proficiencyLevels, skill.proficiencyLevel);
+          if (initial) {
+            skillTd.append(name, createElement('span', `report-table__badge report-table__badge--l${skill.proficiencyLevel}`, initial));
+          } else {
+            skillTd.append(name);
+          }
+          monthsTd.textContent = skill.expInMonths != null ? `${skill.expInMonths} M` : '—';
+        }
+        tr.append(skillTd, monthsTd);
+      });
+      tbody.append(tr);
+    });
+  });
+  table.append(tbody);
+
+  tableWrapper.append(table);
+  body.append(tableWrapper);
+}
+
 function renderTable(block, config, data, skillRarity) {
   const { employees, metadata: { proficiencyLevels } } = data;
-  const { skillNames, rows } = buildMatrix(employees, skillRarity);
 
   block.textContent = '';
   const wrapper = createElement('div', 'report-table__wrapper');
@@ -143,64 +246,12 @@ function renderTable(block, config, data, skillRarity) {
 
   const exportBtn = createElement('button', 'report-table__button', 'Export CSV');
   exportBtn.type = 'button';
-  exportBtn.addEventListener('click', () => downloadCsv('skill-report.csv', toCsv(skillNames, rows, proficiencyLevels)));
+  exportBtn.addEventListener('click', () => downloadCsv('skill-report.csv', tierTableToCsv(employees, proficiencyLevels, skillRarity)));
   toolbar.append(exportBtn);
   body.append(toolbar);
 
-  const tableWrapper = createElement('div', 'report-table__table-wrapper');
-  const table = createElement('table', 'report-table__table');
+  renderTierTable(body, employees, proficiencyLevels, skillRarity);
 
-  const thead = document.createElement('thead');
-
-  // Banner row: Employee spans both header rows, then one cell per rarity tier
-  // spanning its skills. Columns are sorted rarest-first, so same-tier skills
-  // are contiguous and can be collapsed into colspan groups.
-  const groupRow = document.createElement('tr');
-  const employeeTh = createElement('th', 'report-table__col-employee', 'Employee');
-  employeeTh.rowSpan = 2;
-  groupRow.append(employeeTh);
-
-  const groups = [];
-  skillNames.forEach((name) => {
-    const tier = skillRarity?.get(name)?.tier;
-    const id = tier?.id || 'unknown';
-    const last = groups[groups.length - 1];
-    if (last && last.id === id) last.count += 1;
-    else groups.push({ id, label: tier?.label || '', count: 1 });
-  });
-  groups.forEach((group) => {
-    const th = createElement('th', `report-table__group report-table__group--${group.id}`, group.label);
-    th.colSpan = group.count;
-    groupRow.append(th);
-  });
-  thead.append(groupRow);
-
-  // Skill-name row.
-  const nameRow = document.createElement('tr');
-  skillNames.forEach((name) => {
-    const th = createElement('th', 'report-table__col-skill', name);
-    const info = skillRarity?.get(name);
-    if (info) th.title = `Held by ${info.holders} of ${info.total} employees (${Math.round(info.share * 100)}%)`;
-    nameRow.append(th);
-  });
-  thead.append(nameRow);
-  table.append(thead);
-
-  const tbody = document.createElement('tbody');
-  rows.forEach((row) => {
-    const tr = document.createElement('tr');
-    tr.append(createElement('td', 'report-table__cell-employee', row.name));
-    skillNames.forEach((name) => {
-      const td = document.createElement('td');
-      td.append(createLevelBadge(row.skillMap[name], proficiencyLevels));
-      tr.append(td);
-    });
-    tbody.append(tr);
-  });
-  table.append(tbody);
-
-  tableWrapper.append(table);
-  body.append(tableWrapper);
   wrapper.append(body);
   block.append(wrapper);
 }
@@ -246,12 +297,10 @@ export default async function decorate(block) {
     if (employees.length === 0) {
       block.textContent = '';
       block.append(createElement('p', 'report-table__empty', 'No direct reports have submitted skills yet.'));
-      block.prepend(buildViewToggle('report'));
       return;
     }
 
     renderTable(block, config, { ...data, employees }, skillRarity);
-    block.prepend(buildViewToggle('report'));
   } catch {
     block.textContent = '';
     block.append(createElement('p', 'report-table__error', 'Failed to load skill report. Please try again.'));
