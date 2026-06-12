@@ -34,17 +34,31 @@ function getRarityTier(share) {
   return RARITY_TIERS.find((tier) => share >= tier.minShare);
 }
 
-const TIER_INDEX = new Map(RARITY_TIERS.map((tier, index) => [tier.id, index]));
+// The rarity tier a given skill falls into (org-wide), or undefined if its
+// share is below the lowest tier threshold.
+function getSkillTier(skillName, skillRarity) {
+  return skillRarity?.get(skillName)?.tier;
+}
 
-// An employee's skills ordered by rarity tier (Generic → Ultra niche), then
-// alphabetically within a tier. Shared by the rendered table and the CSV export
-// so both list skills in the same order.
-function sortedTierSkills(emp, skillRarity) {
-  return [...emp.skills].sort((a, b) => {
-    const tierA = TIER_INDEX.get(skillRarity?.get(a.name)?.tier?.id) ?? RARITY_TIERS.length;
-    const tierB = TIER_INDEX.get(skillRarity?.get(b.name)?.tier?.id) ?? RARITY_TIERS.length;
-    return tierA - tierB || a.name.localeCompare(b.name);
+// Buckets skills into rarity tiers, sorted alphabetically within each tier.
+// Returns a Map keyed by tier id in RARITY_TIERS order → skills[]. This is the
+// single source of truth for tier grouping, shared by the tier table render,
+// the CSV export, and the distribution table. Skills whose share falls below
+// the lowest tier are omitted.
+function groupSkillsByTier(skills, skillRarity) {
+  const byTier = new Map(RARITY_TIERS.map((tier) => [tier.id, []]));
+  skills.forEach((skill) => {
+    const tierId = getSkillTier(skill.name, skillRarity)?.id;
+    if (byTier.has(tierId)) byTier.get(tierId).push(skill);
   });
+  byTier.forEach((tierSkills) => tierSkills.sort((a, b) => a.name.localeCompare(b.name)));
+  return byTier;
+}
+
+// An employee's skills flattened in tier order (Generic → Ultra niche), then
+// alphabetically within a tier — the order used by the CSV export.
+function sortedTierSkills(emp, skillRarity) {
+  return [...groupSkillsByTier(emp.skills, skillRarity).values()].flat();
 }
 
 /**
@@ -111,7 +125,7 @@ function tierTableToCsv(employees, proficiencyLevels, skillRarity) {
     skills.forEach((skill, index) => {
       // Mirror the on-screen rowspan: name only on the employee's first row.
       const row = [index === 0 ? emp.name : ''];
-      const skillTierId = skillRarity?.get(skill.name)?.tier?.id;
+      const skillTierId = getSkillTier(skill.name, skillRarity)?.id;
       RARITY_TIERS.forEach((tier) => {
         if (tier.id === skillTierId) {
           const initial = getLevelInitial(proficiencyLevels, skill.proficiencyLevel);
@@ -124,7 +138,6 @@ function tierTableToCsv(employees, proficiencyLevels, skillRarity) {
       dataRows.push(row);
     });
   });
-
 
   return [groupRow, subRow, ...dataRows]
     .map((row) => row.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(','))
@@ -183,14 +196,7 @@ function renderTierTable(body, employees, proficiencyLevels, skillRarity) {
   //    spans all rows for that employee. A dark rule separates employees.
   const tbody = document.createElement('tbody');
   employees.forEach((emp) => {
-    // Group skills by tier, sorted alphabetically within each tier.
-    const byTier = new Map(RARITY_TIERS.map((t) => [t.id, []]));
-    emp.skills.forEach((skill) => {
-      const tierId = skillRarity?.get(skill.name)?.tier?.id;
-      if (tierId && byTier.has(tierId)) byTier.get(tierId).push(skill);
-    });
-    byTier.forEach((skills) => skills.sort((a, b) => a.name.localeCompare(b.name)));
-
+    const byTier = groupSkillsByTier(emp.skills, skillRarity);
     const rowCount = Math.max(...[...byTier.values()].map((s) => s.length), 1);
 
     for (let i = 0; i < rowCount; i += 1) {
@@ -225,7 +231,6 @@ function renderTierTable(body, employees, proficiencyLevels, skillRarity) {
   tableWrapper.append(table);
   body.append(tableWrapper);
 }
-
 
 // Dummy skill-report used in test/local environments so the table is always
 // populated without needing the real API.  10 employees are spread between
@@ -480,7 +485,6 @@ function renderTable(block, config, data, skillRarity) {
   exportBtn.addEventListener('click', () => downloadCsv('skill-report.csv', tierTableToCsv(employees, proficiencyLevels, skillRarity)));
   toolbar.append(exportBtn);
   body.append(toolbar);
-console.log('Employees to render:', employees);
   renderTierTable(body, employees, proficiencyLevels, skillRarity);
   renderDistributionTable(body, config);
 

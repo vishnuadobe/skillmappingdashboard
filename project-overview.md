@@ -64,13 +64,12 @@ Defined in `scripts/api.js`.
 - Columns: Skill, Experience in Months (mandatory), Specialization (optional multi-select), Certification (Yes/No), Title of Certificate (shown when Yes)
 - Skill dropdown from `/skills.json` (da.live authorable); "Other…" allows free-text custom skills
 - Specialization multi-select sourced from `/specializations.json`; multiple options per skill row
-- Inline edit (✏) and delete (×) per row before submission
-- Duplicate detection: case-insensitive + version-normalised (`HTML` and `HTML5` are treated as the same skill); also checks against already-saved skills
 - Proficiency level derived from authorable `/skill-levels.json`
-- POSTs directly to backend via `submitSkillReport()`; specialization round-trips as the backend's `specialization` comma-string (joined on write, split on read)
-- **Single-page flow** — no separate post-submit page. After Submit the form stays put, `state.rows` clears, the saved list refreshes, and a green success banner shows
+- **"+ Add" submits immediately** — there is no separate Submit button. Clicking **+ Add** in the bottom input row builds a single-skill payload and POSTs it via `submitSkillReport()`, then silently reloads the saved list and shows a green success banner. The backend merges/appends, so a single-skill POST is all that's needed. Specialization round-trips as the backend's `specialization` comma-string (joined on write, split on read)
+- **Single-page flow** — the bottom "+ Add" input row is always present; after each Add it clears and is ready for the next skill
 - **Previously submitted skills** shown as a list below the form (loaded on init into `state.savedRows`)
-  - **Inline edit (✏), immediate-save** — editing a saved row swaps it for a pre-filled input row; Save POSTs that single skill straight away (`saveSavedRowEdit`), then silently reloads the list. No delete yet (backend merges, server-side removal needs a delete endpoint)
+  - **Inline edit, immediate-save** — clicking ✏ on a saved row swaps it for a pre-filled input row in place, with **floppy (Save) / × (Cancel) icon buttons** on a single line. Save POSTs that single skill straight away (`submitInputSkill`), then silently reloads the list. No delete yet (backend merges, server-side removal needs a delete endpoint)
+  - The saved-row edit uses its own input model (`state.editInput`) separate from the add row's (`state.input`), so the "+ Add" row stays usable while a saved row is being edited — both input rows can be active at once
 - The manager **view toggle** lives in the global header, not in this block
 
 ### `report-table` — `/employee-details`
@@ -78,6 +77,7 @@ Defined in `scripts/api.js`.
 - **Gated to managers** — `getSessionUser()` + `isManager`; non-managers redirected to `/`
 - **Direct-reports filter** — only the logged-in manager's reports (`Manager LDAP === me`), joined via `employee-mapping.js`. Skipped in test/local, where a built-in `DUMMY_SKILL_REPORT` (10 employees across all tiers) backs the view
 - Live data via `getSkillReport()`; level badges driven by `proficiencyLevels` from API metadata
+- **Shared rarity-tier helpers** — `getSkillTier(name, skillRarity)` (a skill's tier) and `groupSkillsByTier(skills, skillRarity)` (`Map<tierId, sortedSkills[]>`) are the single source of truth for tier bucketing, used by the tier table render, the CSV export, and the distribution table's tier rows (which also share the `RARITY_TIERS` definition)
 - **Table 1 — "Skills by rarity tier"** (`renderTierTable`): one column group per tier (Generic → Ultra niche), split into Skill + Months. One row per employee with the employee's skills zipped row-by-row across tiers (side-by-side, not stacked); employee name spans their rows; dark rule between employees. Rose-gradient tier theming, single-letter proficiency badges. **Export CSV** (`tierTableToCsv`) mirrors this layout 1:1
 - **Table 2 — "Skill Distribution"** (`renderDistributionTable`): rows = rarity tiers, columns = P-level bands (P20–P50), cells = employee counts, with a **Noida / Bangalore location filter** (pill buttons swap cell values in place). Columns (`levels`) and locations (`locations`) are **authorable** via block config rows. Backed by `DUMMY_DISTRIBUTION` for now — to be replaced with a fetch from `/skill-distribution-mapping.json`
 - Sticky employee column, loading/error/empty states

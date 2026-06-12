@@ -428,94 +428,38 @@
   border-color: var(--entry-form-accent-strong);
 }
 
-/* ── Inline edit actions (Save + Cancel) ── */
+/* ── Inline edit actions (Save + Cancel as icons, single line) ── */
 .entry-form .entry-form__edit-actions {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: stretch;
-}
-
-.entry-form .entry-form__cancel-btn {
-  height: 34px;
-  padding: 0 12px;
-  border: 1.5px solid var(--entry-form-border);
-  border-radius: 10px;
-  background: #fff;
-  color: var(--entry-form-text-muted);
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color 160ms ease, color 160ms ease;
-}
-
-.entry-form .entry-form__cancel-btn:hover {
-  border-color: var(--entry-form-text-muted);
-  color: var(--entry-form-text);
-}
-
-/* ── Form footer ── */
-.entry-form .entry-form__form-footer {
-  display: flex;
+  flex-direction: row;
+  gap: 8px;
   align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  padding-top: 20px;
+  justify-content: center;
 }
 
-.entry-form .entry-form__skill-count {
-  font-size: 0.8rem;
-  color: #9ca3af;
-}
-
-/* ── Shared button ── */
-.entry-form .entry-form__button {
-  min-height: 46px;
-  padding: 0 24px;
-  border: 1.5px solid var(--entry-form-border);
-  border-radius: 999px;
-  background: #fff;
-  color: var(--entry-form-text);
-  font: inherit;
-  font-weight: 700;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    background-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 120ms ease;
-}
-
-.entry-form .entry-form__button--primary {
+.entry-form .entry-form__icon-btn--save {
   border-color: var(--entry-form-accent);
   background: var(--entry-form-accent);
   color: #fff;
 }
 
-.entry-form .entry-form__button:hover {
-  border-color: var(--entry-form-accent);
-  box-shadow: var(--entry-form-focus);
-  transform: translateY(-1px);
-}
-
-.entry-form .entry-form__button--primary:hover {
-  background: var(--entry-form-accent-strong);
+.entry-form .entry-form__icon-btn--save:hover {
   border-color: var(--entry-form-accent-strong);
+  background: var(--entry-form-accent-strong);
 }
 
-.entry-form .entry-form__button:focus-visible {
-  outline: none;
-  box-shadow: var(--entry-form-focus);
+.entry-form .entry-form__icon-btn--cancel {
+  color: var(--entry-form-text-muted);
 }
 
-.entry-form .entry-form__button:disabled {
-  background: #c4cdd8;
-  border-color: #c4cdd8;
+.entry-form .entry-form__icon-btn--cancel:hover {
+  border-color: var(--entry-form-danger);
+  color: var(--entry-form-danger);
+}
+
+.entry-form .entry-form__icon-btn:disabled {
   cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+  opacity: 0.55;
 }
 
 /* ── Messages ── */
