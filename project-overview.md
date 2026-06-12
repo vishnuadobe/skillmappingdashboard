@@ -68,30 +68,20 @@ Defined in `scripts/api.js`.
 - Duplicate detection: case-insensitive + version-normalised (`HTML` and `HTML5` are treated as the same skill); also checks against already-saved skills
 - Proficiency level derived from authorable `/skill-levels.json`
 - POSTs directly to backend via `submitSkillReport()`; specialization round-trips as the backend's `specialization` comma-string (joined on write, split on read)
-- **Previously submitted skills** shown as a read-only list below the form (loaded on init into `state.savedRows`)
-- For managers, a **view toggle** ("Enter Skills ⇄ Manager View") appears at the top; regular employees don't see it
-
-**Saved view** (post-submit):
-- Fetches employee record via `getEmployeeSkillReport(employeeId)` and displays all saved skills
-- Green success banner; subtext guides the user
-- Edit (✏) only — no delete button (backend merges, server-side removal needs a delete endpoint)
-- Clicking edit reveals an inline input row pre-filled with the skill's values (hidden otherwise in saved view); the edited row's own name is excluded from duplicate checking
-- Edit button is larger than in form mode (34×34 px)
-- **Save changes** — re-POSTs the current table; does not re-fetch from server (preserves local edits)
-- **+ Add more skills** — resets to blank form mode; saved skill names retained for duplicate checking
+- **Single-page flow** — no separate post-submit page. After Submit the form stays put, `state.rows` clears, the saved list refreshes, and a green success banner shows
+- **Previously submitted skills** shown as a list below the form (loaded on init into `state.savedRows`)
+  - **Inline edit (✏), immediate-save** — editing a saved row swaps it for a pre-filled input row; Save POSTs that single skill straight away (`saveSavedRowEdit`), then silently reloads the list. No delete yet (backend merges, server-side removal needs a delete endpoint)
+- The manager **view toggle** lives in the global header, not in this block
 
 ### `report-table` — `/employee-details`
-- Manager-facing skill matrix (rows = employees, columns = skills)
+- Manager-facing report with **two tables**
 - **Gated to managers** — `getSessionUser()` + `isManager`; non-managers redirected to `/`
-- **Direct-reports filter** — only the logged-in manager's reports (`Manager LDAP === me`), joined via `employee-mapping.js`
-- Live data via `getSkillReport()`
-- Level badges driven by `proficiencyLevels` from API response metadata
-- Skills grouped under **rarity-tier banners** (Generic → Ultra niche), computed from org-wide holder counts — see `progress.md` / `RARITY_TIERS`
-- Light, uniform grid lines (`--report-table-grid`); skill columns centred under their banner
-- **View toggle** — "Enter Skills ⇄ Manager View" so a manager can switch to the entry form
-- Sticky employee column, Export CSV
-- Loading, error, and empty states handled
-- No logout in-block (global header Logout only)
+- **Direct-reports filter** — only the logged-in manager's reports (`Manager LDAP === me`), joined via `employee-mapping.js`. Skipped in test/local, where a built-in `DUMMY_SKILL_REPORT` (10 employees across all tiers) backs the view
+- Live data via `getSkillReport()`; level badges driven by `proficiencyLevels` from API metadata
+- **Table 1 — "Skills by rarity tier"** (`renderTierTable`): one column group per tier (Generic → Ultra niche), split into Skill + Months. One row per employee with the employee's skills zipped row-by-row across tiers (side-by-side, not stacked); employee name spans their rows; dark rule between employees. Rose-gradient tier theming, single-letter proficiency badges. **Export CSV** (`tierTableToCsv`) mirrors this layout 1:1
+- **Table 2 — "Skill Distribution"** (`renderDistributionTable`): rows = rarity tiers, columns = P-level bands (P20–P50), cells = employee counts, with a **Noida / Bangalore location filter** (pill buttons swap cell values in place). Columns (`levels`) and locations (`locations`) are **authorable** via block config rows. Backed by `DUMMY_DISTRIBUTION` for now — to be replaced with a fetch from `/skill-distribution-mapping.json`
+- Sticky employee column, loading/error/empty states
+- **View toggle** lives in the global header (not in-block); no logout in-block (global header Logout only)
 
 ---
 
@@ -102,7 +92,7 @@ Defined in `scripts/api.js`.
 | `scripts/api.js` | `getSkillReport()`, `getEmployeeSkillReport(id)`, `submitSkillReport()`, `buildSkillsPayload()` (specialization → comma string), async `getLevelFromExperienceMonths()` |
 | `scripts/auth.js` | SSO wired: `initAuth`/`loadIms`, `logout()` (default), `getSessionUser()` (+ `?as=` test impersonation), `isTestEnvironment()`. Derives `isManager` from the mapping sheet |
 | `scripts/employee-mapping.js` | Loads/caches `/employee-mapping.json`; `normalizeLdap`, `getEmployeeMapping`, `isManager`, `getDirectReports`, `buildUserFromMapping` |
-| `scripts/view-toggle.js` | `buildViewToggle(currentView)` — segmented "Enter Skills ⇄ Manager View" control shown to managers on both pages; preserves `?as=` on navigation |
+| `scripts/view-toggle.js` | `buildViewToggle(currentView)` — segmented "Enter Skills ⇄ Manager View" control; preserves `?as=` on navigation. Rendered by the **global header** (`blocks/header`) for managers, not by the page blocks |
 | `scripts/db.js` | IndexDB — `setUser`, `getUser`, `clearUser` for `{ name, email, ldap, isManager }` |
 | `scripts/skill-data.js` | Mock data — legacy; blocks use the live API |
 | `scripts/scripts.js` | AEM page decoration entry point; production runs `initAuth(loadPage)`, local/preview skips auth |
@@ -121,6 +111,7 @@ Content at [da.live/#/vishnuadobe/skillmappingdashboard](https://da.live/#/vishn
 | `skills` | Spreadsheet | Skill dropdown list for `entry-form` |
 | `specializations` | Spreadsheet | Specialization multi-select options for `entry-form` (PNA, SPA, Micro frontX, Hybrid Mobile App, iOS Native App, Android Native App, AppBuils) |
 | `employee-mapping` | Spreadsheet | Manager hierarchy (`Emp_LDAP`, `Resource Name`, `Workday Manager`, `Manager LDAP`) — drives `isManager` and the direct-reports filter |
+| `skill-distribution-mapping` | Spreadsheet | **Planned** — per-employee P-level + location feeding the Skill Distribution table (currently `DUMMY_DISTRIBUTION` in `report-table.js`) |
 
 ---
 
@@ -135,3 +126,4 @@ Content at [da.live/#/vishnuadobe/skillmappingdashboard](https://da.live/#/vishn
 | Auth headers on API calls | `requestJson()` sends a bearer token when IMS present; confirm backend requirement |
 | Data reconciliation | LDAP spellings must match between mapping sheet and skill backend (e.g. `chethankuma` vs `chethankumar`) |
 | Server-side skill deletion | Backend merges only; need a delete endpoint or replace semantics on POST |
+| Real Skill Distribution data | Table 2 uses `DUMMY_DISTRIBUTION` (Noida/Bangalore). Awaiting manager's P-level + location dataset → `/skill-distribution-mapping.json` |

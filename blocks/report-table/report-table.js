@@ -125,6 +125,7 @@ function tierTableToCsv(employees, proficiencyLevels, skillRarity) {
     });
   });
 
+
   return [groupRow, subRow, ...dataRows]
     .map((row) => row.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(','))
     .join('\n');
@@ -224,6 +225,7 @@ function renderTierTable(body, employees, proficiencyLevels, skillRarity) {
   tableWrapper.append(table);
   body.append(tableWrapper);
 }
+
 
 // Dummy skill-report used in test/local environments so the table is always
 // populated without needing the real API.  10 employees are spread between
@@ -478,7 +480,7 @@ function renderTable(block, config, data, skillRarity) {
   exportBtn.addEventListener('click', () => downloadCsv('skill-report.csv', tierTableToCsv(employees, proficiencyLevels, skillRarity)));
   toolbar.append(exportBtn);
   body.append(toolbar);
-
+console.log('Employees to render:', employees);
   renderTierTable(body, employees, proficiencyLevels, skillRarity);
   renderDistributionTable(body, config);
 
