@@ -8,10 +8,16 @@
   align-items: center;
   justify-content: space-between;
   height: var(--nav-height);
-  padding: 0 32px;
+  padding: 0 14px;
   background: var(--background-color);
   border-bottom: 1px solid #e5e7eb;
   box-shadow: 0 1px 6px rgb(0 0 0 / 8%);
+}
+
+@media (width >= 600px) {
+  .header > nav {
+    padding: 0 32px;
+  }
 }
 
 /* Brand / logo link */
@@ -56,8 +62,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 36px;
-  padding: 0 20px;
+  height: 34px;
+  padding: 0 12px;
   border: 1.5px solid #131313;
   border-radius: 999px;
   background: transparent;
@@ -78,4 +84,41 @@
 .header .header__logout-btn:focus-visible {
   outline: 2px solid #131313;
   outline-offset: 2px;
+}
+
+/* Icon hidden on desktop, text visible */
+.header .header__logout-icon {
+  display: none;
+}
+
+@media (width < 600px) {
+  .header .header__brand img,
+  .header .header__brand picture {
+    height: 24px;
+  }
+
+  .header .header__actions {
+    gap: 6px;
+  }
+
+  /* Show icon, hide text */
+  .header .header__logout-btn {
+    width: 34px;
+    padding: 0;
+  }
+
+  .header .header__logout-text {
+    display: none;
+  }
+
+  .header .header__logout-icon {
+    display: block;
+  }
+}
+
+@media (width >= 600px) {
+  .header .header__logout-btn {
+    height: 36px;
+    padding: 0 20px;
+  }
 }

@@ -40,7 +40,35 @@ export default async function decorate(block) {
   const logoutBtn = document.createElement('button');
   logoutBtn.className = 'header__logout-btn';
   logoutBtn.type = 'button';
-  logoutBtn.textContent = 'Logout';
+  logoutBtn.setAttribute('aria-label', 'Logout');
+
+  const logoutLabel = document.createElement('span');
+  logoutLabel.className = 'header__logout-text';
+  logoutLabel.textContent = 'Logout';
+
+  const logoutIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  logoutIcon.setAttribute('width', '18');
+  logoutIcon.setAttribute('height', '18');
+  logoutIcon.setAttribute('viewBox', '0 0 24 24');
+  logoutIcon.setAttribute('fill', 'none');
+  logoutIcon.setAttribute('stroke', 'currentColor');
+  logoutIcon.setAttribute('stroke-width', '2');
+  logoutIcon.setAttribute('stroke-linecap', 'round');
+  logoutIcon.setAttribute('stroke-linejoin', 'round');
+  logoutIcon.setAttribute('aria-hidden', 'true');
+  logoutIcon.classList.add('header__logout-icon');
+  const iconPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  iconPath.setAttribute('d', 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4');
+  const iconArrow = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  iconArrow.setAttribute('points', '16 17 21 12 16 7');
+  const iconLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  iconLine.setAttribute('x1', '21');
+  iconLine.setAttribute('y1', '12');
+  iconLine.setAttribute('x2', '9');
+  iconLine.setAttribute('y2', '12');
+  logoutIcon.append(iconPath, iconArrow, iconLine);
+
+  logoutBtn.append(logoutLabel, logoutIcon);
   logoutBtn.addEventListener('click', logout);
   actions.append(logoutBtn);
 

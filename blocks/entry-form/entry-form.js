@@ -2,6 +2,7 @@ import {
   buildSkillsPayload,
   getLevelFromExperienceMonths,
   submitSkillReport,
+  deleteSkill,
   getEmployeeSkillReport,
 } from '../../scripts/api.js';
 import { getSessionUser } from '../../scripts/auth.js';
@@ -17,8 +18,9 @@ function mapServerSkillToRow(skill) {
   return {
     skillName: skill.name,
     months: Number(skill.expInMonths) || 0,
-    // Backend sends a comma-separated `specialization` string; the UI uses an array.
+    // Backend sends comma-separated strings for specialization and platform; UI uses arrays.
     specializations: parseSpecializations(skill.specialization ?? skill.specializations),
+    platforms: parseSpecializations(skill.platform ?? skill.platforms),
     cert: certification ? 'yes' : 'no',
     certTitle: certification?.certificateName || certification?.name || '',
     certImageUrl: certification?.certificateImageUrl || certification?.imageUrl || '',
@@ -36,14 +38,16 @@ async function fetchSkillList() {
   }
 }
 
-async function fetchSpecializations() {
+async function fetchSpecializationsAndPlatforms() {
   try {
     const res = await fetch('/specializations.json');
-    if (!res.ok) return [];
+    if (!res.ok) return [[], []];
     const json = await res.json();
-    return (json.data || []).map((r) => r.name).filter(Boolean);
+    const specializations = (json.data?.data || []).map((r) => r.name).filter(Boolean);
+    const platforms = (json.platforms?.data || []).map((r) => r.Name || r.name).filter(Boolean);
+    return [specializations, platforms];
   } catch {
-    return [];
+    return [[], []];
   }
 }
 
@@ -173,11 +177,11 @@ function buildMultiSelect(options, initialValues, onChange) {
 
 export default async function decorate(block) {
   const config = readBlockConfig(block);
-  const [user, skillList, specializationList] = await Promise.all([
-    getSessionUser(), fetchSkillList(), fetchSpecializations(),
+  const [user, skillList, [specializationList, platformList]] = await Promise.all([
+    getSessionUser(), fetchSkillList(), fetchSpecializationsAndPlatforms(),
   ]);
   const blankInput = () => ({
-    skill: '', skillOther: '', months: 0, specializations: [], cert: '', certTitle: '', certImageUrl: '',
+    skill: '', skillOther: '', months: 0, specializations: [], platforms: [], cert: '', certTitle: '', certImageUrl: '',
   });
 
   const state = {
@@ -246,6 +250,7 @@ export default async function decorate(block) {
       skillOther: isPreset ? '' : s.skillName,
       months: s.months,
       specializations: [...(s.specializations || [])],
+      platforms: [...(s.platforms || [])],
       cert: s.cert,
       certTitle: s.certTitle,
       certImageUrl: s.certImageUrl || '',
@@ -284,6 +289,29 @@ export default async function decorate(block) {
     }
   }
 
+  async function deleteSavedRow(i) {
+    const s = state.savedRows[i];
+    if (!s) return;
+    state.busy = true;
+    state.message = '';
+    state.messageType = '';
+    render();
+    try {
+      await deleteSkill(state.employeeId, s.skillName);
+      await loadPreviousEntries({ silent: true });
+      state.message = `"${s.skillName}" deleted.`;
+      state.messageType = 'success';
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Skill delete failed:', err);
+      state.message = err.message || 'Delete failed. Check the browser console for details.';
+      state.messageType = 'error';
+    } finally {
+      state.busy = false;
+      render();
+    }
+  }
+
   // Pre-fills the input row from a previously-submitted skill so the user can
   // edit it. The form's bottom input row is hidden while this is active and the
   // input row appears inline at that saved row's position.
@@ -296,6 +324,7 @@ export default async function decorate(block) {
       skillOther: isPreset ? '' : s.skillName,
       months: s.months,
       specializations: [...(s.specializations || [])],
+      platforms: [...(s.platforms || [])],
       cert: s.cert,
       certTitle: s.certTitle,
       certImageUrl: s.certImageUrl || '',
@@ -329,6 +358,9 @@ export default async function decorate(block) {
       };
       if (input.specializations?.length) {
         skill.specializations = [...input.specializations];
+      }
+      if (input.platforms?.length) {
+        skill.platforms = [...input.platforms];
       }
       if (input.cert === 'yes') {
         skill.certification = { name: input.certTitle.trim() };
@@ -379,6 +411,7 @@ export default async function decorate(block) {
 
     // ── Skill ──
     const skillTd = document.createElement('td');
+    skillTd.dataset.label = 'Skill';
     const skillOpts = [
       { value: '', label: 'Select skill…' },
       ...skillList.map((n) => ({ value: n, label: n })),
@@ -414,6 +447,7 @@ export default async function decorate(block) {
 
     // ── Experience ──
     const expTd = document.createElement('td');
+    expTd.dataset.label = 'Experience';
     const expInput = document.createElement('input');
     expInput.type = 'number';
     expInput.className = 'entry-form__input';
@@ -428,6 +462,7 @@ export default async function decorate(block) {
     // ── Specialization (optional, multi-select) ──
     const specTd = document.createElement('td');
     specTd.className = 'entry-form__spec-td';
+    specTd.dataset.label = 'Specialization';
     specTd.append(buildMultiSelect(
       specializationList,
       input.specializations,
@@ -435,8 +470,20 @@ export default async function decorate(block) {
     ));
     tr.append(specTd);
 
+    // ── Platform (optional, multi-select) ──
+    const platformTd = document.createElement('td');
+    platformTd.className = 'entry-form__spec-td';
+    platformTd.dataset.label = 'Platform';
+    platformTd.append(buildMultiSelect(
+      platformList,
+      input.platforms,
+      (vals) => { input.platforms = vals; },
+    ));
+    tr.append(platformTd);
+
     // ── Certification ──
     const certTd = document.createElement('td');
+    certTd.dataset.label = 'Certification';
     const certSel = buildSelect([
       { value: '', label: 'Select…' },
       { value: 'no', label: 'No' },
@@ -447,6 +494,7 @@ export default async function decorate(block) {
 
     // ── Title of Certificate ──
     const titleTd = document.createElement('td');
+    titleTd.dataset.label = 'Certificate';
     const certTitleWrap = createElement('div', 'entry-form__cert-title-wrap');
     const certDash = createElement('span', 'entry-form__dash', '—');
     const titleInput = document.createElement('input');
@@ -487,6 +535,7 @@ export default async function decorate(block) {
     // action cell stays on one line.
     const addTd = document.createElement('td');
     addTd.className = 'entry-form__action-cell';
+    addTd.dataset.label = '';
 
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
@@ -548,11 +597,14 @@ export default async function decorate(block) {
       tr.className = `entry-form__data-row${state.editingIndex === i ? ' entry-form__data-row--editing' : ''}`;
 
       const skillTd = document.createElement('td');
+      skillTd.dataset.label = 'Skill';
       skillTd.append(createElement('span', 'entry-form__skill-chip', s.skillName));
 
       const expTd = createElement('td', 'entry-form__exp-cell', expLabel);
+      expTd.dataset.label = 'Experience';
 
       const specTd = document.createElement('td');
+      specTd.dataset.label = 'Specialization';
       const slist = s.specializations || [];
       if (slist.length) {
         const chipsWrap = createElement('div', 'entry-form__spec-chips');
@@ -562,7 +614,19 @@ export default async function decorate(block) {
         specTd.append(createElement('span', 'entry-form__dash', '—'));
       }
 
+      const platformTd = document.createElement('td');
+      platformTd.dataset.label = 'Platform';
+      const plist = s.platforms || [];
+      if (plist.length) {
+        const chipsWrap = createElement('div', 'entry-form__spec-chips');
+        plist.forEach((p) => chipsWrap.append(createElement('span', 'entry-form__spec-chip', p)));
+        platformTd.append(chipsWrap);
+      } else {
+        platformTd.append(createElement('span', 'entry-form__dash', '—'));
+      }
+
       const certTd = document.createElement('td');
+      certTd.dataset.label = 'Certification';
       certTd.append(createElement(
         'span',
         `entry-form__cert-badge entry-form__cert-badge--${s.cert}`,
@@ -570,6 +634,7 @@ export default async function decorate(block) {
       ));
 
       const titleTd = document.createElement('td');
+      titleTd.dataset.label = 'Certificate';
       if (s.cert === 'yes') {
         titleTd.append(createElement('strong', 'entry-form__cert-title', s.certTitle));
       } else {
@@ -578,6 +643,7 @@ export default async function decorate(block) {
 
       const actionTd = document.createElement('td');
       actionTd.className = 'entry-form__action-cell';
+      actionTd.dataset.label = '';
 
       const editBtn = document.createElement('button');
       editBtn.className = 'entry-form__icon-btn entry-form__icon-btn--edit';
@@ -608,8 +674,8 @@ export default async function decorate(block) {
       delBtn.title = 'Delete';
       delBtn.setAttribute('aria-label', `Delete ${s.skillName}`);
       const delSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      delSvg.setAttribute('width', '13');
-      delSvg.setAttribute('height', '13');
+      delSvg.setAttribute('width', '16');
+      delSvg.setAttribute('height', '16');
       delSvg.setAttribute('viewBox', '0 0 24 24');
       delSvg.setAttribute('fill', 'none');
       delSvg.setAttribute('stroke', 'currentColor');
@@ -623,7 +689,9 @@ export default async function decorate(block) {
       delPath2.setAttribute('d', 'M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2');
       delSvg.append(delPath1, delPath2);
       delBtn.append(delSvg);
-      delBtn.addEventListener('click', () => deleteRow(i));
+      delBtn.addEventListener('click', () => (
+        tableKind === 'saved' ? deleteSavedRow(i) : deleteRow(i)
+      ));
 
       const actionsWrap = createElement('div', 'entry-form__row-actions');
       actionsWrap.append(editBtn);
@@ -631,9 +699,9 @@ export default async function decorate(block) {
       actionTd.append(actionsWrap);
 
       if (showActions) {
-        tr.append(skillTd, expTd, specTd, certTd, titleTd, actionTd);
+        tr.append(skillTd, expTd, specTd, platformTd, certTd, titleTd, actionTd);
       } else {
-        tr.append(skillTd, expTd, specTd, certTd, titleTd);
+        tr.append(skillTd, expTd, specTd, platformTd, certTd, titleTd);
       }
       return tr;
     });
@@ -652,7 +720,7 @@ export default async function decorate(block) {
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    const headers = ['Skill', 'Experience in Months', 'Specialization', 'Certification', 'Title of Certificate'];
+    const headers = ['Skill', 'Experience in Months', 'Specialization', 'Platform', 'Certification', 'Title of Certificate'];
     if (showActions) headers.push('');
     headers.forEach((label) => headerRow.append(createElement('th', '', label)));
     thead.append(headerRow);
@@ -679,9 +747,7 @@ export default async function decorate(block) {
     if (!state.savedRows.length) return;
     const section = createElement('div', 'entry-form__previous');
     section.append(createElement('h3', 'entry-form__previous-title', 'Previously submitted skills'));
-    // Edit allowed (✏ → inline edit, Save POSTs immediately). Delete is not
-    // shown yet — backend has no DELETE endpoint, see progress.md.
-    section.append(renderTable(state.savedRows, true, false, false, 'saved'));
+    section.append(renderTable(state.savedRows, true, false, true, 'saved'));
     wrapper.append(section);
   }
 

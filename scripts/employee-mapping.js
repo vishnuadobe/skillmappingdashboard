@@ -31,8 +31,18 @@ async function fetchMapping() {
     name: String(row['Resource Name'] || '').trim(),
     managerName: String(row['Workday Manager'] || '').trim(),
     managerLdap: normalizeLdap(row['Manager LDAP']),
+    jobLevel: row['Job Level'] ? `P${String(row['Job Level']).trim()}` : null,
+    location: String(row.Location || '').trim(),
   }));
   return mappingCache;
+}
+
+/**
+ * Returns all employee mapping records (with jobLevel and location included).
+ * @returns {Promise<Array>}
+ */
+export async function getAllEmployeeRecords() {
+  return fetchMapping();
 }
 
 /**

@@ -61,11 +61,12 @@ Defined in `scripts/api.js`.
 
 **Form mode** (initial state):
 - Employee submits skills via an inline table UI
-- Columns: Skill, Experience in Months (mandatory), Specialization (optional multi-select), Certification (Yes/No), Title of Certificate (shown when Yes)
+- Columns: Skill, Experience in Months (mandatory), Specialization (optional multi-select), Platform (optional multi-select), Certification (Yes/No), Title of Certificate (shown when Yes)
 - Skill dropdown from `/skills.json` (da.live authorable); "Other…" allows free-text custom skills
 - Specialization multi-select sourced from `/specializations.json`; multiple options per skill row
+- Platform multi-select sourced from `/platforms.json` (da.live authorable); lists Adobe platforms (EDS, AEM, AJO, AEP, etc.); stored as `platform` comma-string in backend, split back to array on read
 - Proficiency level derived from authorable `/skill-levels.json`
-- **"+ Add" submits immediately** — there is no separate Submit button. Clicking **+ Add** in the bottom input row builds a single-skill payload and POSTs it via `submitSkillReport()`, then silently reloads the saved list and shows a green success banner. The backend merges/appends, so a single-skill POST is all that's needed. Specialization round-trips as the backend's `specialization` comma-string (joined on write, split on read)
+- **"+ Add" submits immediately** — there is no separate Submit button. Clicking **+ Add** in the bottom input row builds a single-skill payload and POSTs it via `submitSkillReport()`, then silently reloads the saved list and shows a green success banner. The backend merges/appends, so a single-skill POST is all that's needed. Specialization and Platform both round-trip as comma-strings (joined on write, split on read)
 - **Single-page flow** — the bottom "+ Add" input row is always present; after each Add it clears and is ready for the next skill
 - **Previously submitted skills** shown as a list below the form (loaded on init into `state.savedRows`)
   - **Inline edit, immediate-save** — clicking ✏ on a saved row swaps it for a pre-filled input row in place, with **floppy (Save) / × (Cancel) icon buttons** on a single line. Save POSTs that single skill straight away (`submitInputSkill`), then silently reloads the list. No delete yet (backend merges, server-side removal needs a delete endpoint)
@@ -75,11 +76,11 @@ Defined in `scripts/api.js`.
 ### `report-table` — `/employee-details`
 - Manager-facing report with **two tables**
 - **Gated to managers** — `getSessionUser()` + `isManager`; non-managers redirected to `/`
-- **Direct-reports filter** — only the logged-in manager's reports (`Manager LDAP === me`), joined via `employee-mapping.js`. Skipped in test/local, where a built-in `DUMMY_SKILL_REPORT` (10 employees across all tiers) backs the view
+- **Direct-reports filter** — only the logged-in manager's reports (`Manager LDAP === me`), joined via `employee-mapping.js`
 - Live data via `getSkillReport()`; level badges driven by `proficiencyLevels` from API metadata
 - **Shared rarity-tier helpers** — `getSkillTier(name, skillRarity)` (a skill's tier) and `groupSkillsByTier(skills, skillRarity)` (`Map<tierId, sortedSkills[]>`) are the single source of truth for tier bucketing, used by the tier table render, the CSV export, and the distribution table's tier rows (which also share the `RARITY_TIERS` definition)
 - **Table 1 — "Skills by rarity tier"** (`renderTierTable`): one column group per tier (Generic → Ultra niche), split into Skill + Months. One row per employee with the employee's skills zipped row-by-row across tiers (side-by-side, not stacked); employee name spans their rows; dark rule between employees. Rose-gradient tier theming, single-letter proficiency badges. **Export CSV** (`tierTableToCsv`) mirrors this layout 1:1
-- **Table 2 — "Skill Distribution"** (`renderDistributionTable`): rows = rarity tiers, columns = P-level bands (P20–P50), cells = employee counts, with a **Noida / Bangalore location filter** (pill buttons swap cell values in place). Columns (`levels`) and locations (`locations`) are **authorable** via block config rows. Backed by `DUMMY_DISTRIBUTION` for now — to be replaced with a fetch from `/skill-distribution-mapping.json`
+- **Table 2 — "Skill Distribution"** (`renderDistributionTable`): rows = rarity tiers, columns = P-level bands (P20–P50), cells = employee counts, with a **Noida / Bangalore location filter** (pill buttons swap cell values in place). Columns (`levels`) and locations (`locations`) are **authorable** via block config rows. Distribution computed at runtime from `employee-mapping.json` (`Job Level` → `P`-prefixed, `Location`) joined with the live skill report — no separate sheet needed
 - Sticky employee column, loading/error/empty states
 - **View toggle** lives in the global header (not in-block); no logout in-block (global header Logout only)
 
@@ -89,9 +90,9 @@ Defined in `scripts/api.js`.
 
 | File | Purpose |
 |---|---|
-| `scripts/api.js` | `getSkillReport()`, `getEmployeeSkillReport(id)`, `submitSkillReport()`, `buildSkillsPayload()` (specialization → comma string), async `getLevelFromExperienceMonths()` |
+| `scripts/api.js` | `getSkillReport()`, `getEmployeeSkillReport(id)`, `submitSkillReport()`, `buildSkillsPayload()` (specialization + platform → comma strings), async `getLevelFromExperienceMonths()` |
 | `scripts/auth.js` | SSO wired: `initAuth`/`loadIms`, `logout()` (default), `getSessionUser()` (+ `?as=` test impersonation), `isTestEnvironment()`. Derives `isManager` from the mapping sheet |
-| `scripts/employee-mapping.js` | Loads/caches `/employee-mapping.json`; `normalizeLdap`, `getEmployeeMapping`, `isManager`, `getDirectReports`, `buildUserFromMapping` |
+| `scripts/employee-mapping.js` | Loads/caches `/employee-mapping.json`; `normalizeLdap`, `getEmployeeMapping`, `isManager`, `getDirectReports`, `getAllEmployeeRecords` (includes `jobLevel`/`location`), `buildUserFromMapping` |
 | `scripts/view-toggle.js` | `buildViewToggle(currentView)` — segmented "Enter Skills ⇄ Manager View" control; preserves `?as=` on navigation. Rendered by the **global header** (`blocks/header`) for managers, not by the page blocks |
 | `scripts/db.js` | IndexDB — `setUser`, `getUser`, `clearUser` for `{ name, email, ldap, isManager }` |
 | `scripts/skill-data.js` | Mock data — legacy; blocks use the live API |
@@ -110,8 +111,8 @@ Content at [da.live/#/vishnuadobe/skillmappingdashboard](https://da.live/#/vishn
 | `skill-levels` | Spreadsheet | Experience → proficiency level thresholds (`data` tab) |
 | `skills` | Spreadsheet | Skill dropdown list for `entry-form` |
 | `specializations` | Spreadsheet | Specialization multi-select options for `entry-form` (PNA, SPA, Micro frontX, Hybrid Mobile App, iOS Native App, Android Native App, AppBuils) |
-| `employee-mapping` | Spreadsheet | Manager hierarchy (`Emp_LDAP`, `Resource Name`, `Workday Manager`, `Manager LDAP`) — drives `isManager` and the direct-reports filter |
-| `skill-distribution-mapping` | Spreadsheet | **Planned** — per-employee P-level + location feeding the Skill Distribution table (currently `DUMMY_DISTRIBUTION` in `report-table.js`) |
+| `specializations` (tab: `platforms`) | Spreadsheet tab | Platform multi-select options for `entry-form` (EDS, AEM, AJO, AEP, etc.) — second tab inside the `specializations` sheet, same `name` column structure, served at `/specializations/platforms.json` |
+| `employee-mapping` | Spreadsheet | Manager hierarchy + job level + location (`Emp_LDAP`, `Resource Name`, `Workday Manager`, `Manager LDAP`, `Job Level`, `Location`, `Location Code`) — drives `isManager`, direct-reports filter, and Skill Distribution P-level counts |
 
 ---
 
@@ -126,4 +127,4 @@ Content at [da.live/#/vishnuadobe/skillmappingdashboard](https://da.live/#/vishn
 | Auth headers on API calls | `requestJson()` sends a bearer token when IMS present; confirm backend requirement |
 | Data reconciliation | LDAP spellings must match between mapping sheet and skill backend (e.g. `chethankuma` vs `chethankumar`) |
 | Server-side skill deletion | Backend merges only; need a delete endpoint or replace semantics on POST |
-| Real Skill Distribution data | Table 2 uses `DUMMY_DISTRIBUTION` (Noida/Bangalore). Awaiting manager's P-level + location dataset → `/skill-distribution-mapping.json` |
+| ~~Real Skill Distribution data~~ | **Done** — computed at runtime from `employee-mapping.json` (`Job Level` + `Location`) joined with the live skill report |

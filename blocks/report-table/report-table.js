@@ -1,6 +1,6 @@
 import { getSkillReport } from '../../scripts/api.js';
 import { getSessionUser, isTestEnvironment } from '../../scripts/auth.js';
-import { getDirectReports, normalizeLdap } from '../../scripts/employee-mapping.js';
+import { getDirectReports, normalizeLdap, getAllEmployeeRecords } from '../../scripts/employee-mapping.js';
 
 function readBlockConfig(block) {
   return [...block.children].reduce((config, row) => {
@@ -168,7 +168,38 @@ function downloadCsv(filename, content) {
 function renderTierTable(body, employees, proficiencyLevels, skillRarity) {
   body.append(createElement('h3', 'report-table__subheading', 'Skills by rarity tier'));
 
-  const tableWrapper = createElement('div', 'report-table__table-wrapper');
+  // Mobile card list (hidden at >= 600px via CSS)
+  const cardList = createElement('div', 'report-table__tier-cards');
+  employees.forEach((emp) => {
+    const byTier = groupSkillsByTier(emp.skills, skillRarity);
+    const card = createElement('div', 'report-table__emp-card');
+    card.append(createElement('div', 'report-table__emp-card-name', emp.name));
+    const tiersDiv = createElement('div', 'report-table__emp-card-tiers');
+    RARITY_TIERS.forEach((tier) => {
+      const tierSkills = byTier.get(tier.id) || [];
+      if (!tierSkills.length) return;
+      const section = createElement('div', `report-table__emp-card-tier report-table__emp-card-tier--${tier.id}`);
+      section.append(createElement('div', 'report-table__emp-card-tier-label', tier.label));
+      const skillsDiv = createElement('div', 'report-table__emp-card-skills');
+      tierSkills.forEach((skill) => {
+        const skillRow = createElement('div', 'report-table__emp-card-skill');
+        const initial = getLevelInitial(proficiencyLevels, skill.proficiencyLevel);
+        skillRow.append(createElement('span', 'report-table__skill-label', skill.name));
+        if (initial) {
+          skillRow.append(createElement('span', `report-table__badge report-table__badge--l${skill.proficiencyLevel}`, initial));
+        }
+        skillRow.append(createElement('span', 'report-table__emp-card-months', skill.expInMonths != null ? `${skill.expInMonths} M` : '—'));
+        skillsDiv.append(skillRow);
+      });
+      section.append(skillsDiv);
+      tiersDiv.append(section);
+    });
+    card.append(tiersDiv);
+    cardList.append(card);
+  });
+  body.append(cardList);
+
+  const tableWrapper = createElement('div', 'report-table__table-wrapper report-table__table-wrapper--tiers');
   const table = createElement('table', 'report-table__table report-table__table--tiers');
 
   // ── Header: Employee (rowspan 2), then a colspan-2 banner per tier, then a
@@ -232,152 +263,175 @@ function renderTierTable(body, employees, proficiencyLevels, skillRarity) {
   body.append(tableWrapper);
 }
 
-// Dummy skill-report used in test/local environments so the table is always
-// populated without needing the real API.  10 employees are spread between
-// Noida and Bangalore and carry skills that deliberately land in each of the
-// four rarity tiers once the org-wide holder counts are computed:
-//   Generic  (≥50%): CSS(9), HTML(10), JavaScript(7)
-//   Niche    (≥30%): React(4), TypeScript(3)
-//   Super niche (≥20%): Vue(2), GraphQL(2)
-//   Ultra niche (≥10%): WebGL(1)
-const DUMMY_SKILL_REPORT = {
-  employees: [
-    {
-      name: 'Atul Bansal',
-      email: 'atul.bansal',
-      skills: [
-        { name: 'CSS', proficiencyLevel: 4, expInMonths: 48 },
-        { name: 'HTML', proficiencyLevel: 4, expInMonths: 36 },
-        { name: 'JavaScript', proficiencyLevel: 3, expInMonths: 24 },
-        { name: 'React', proficiencyLevel: 3, expInMonths: 18 },
-        { name: 'GraphQL', proficiencyLevel: 2, expInMonths: 12 },
-      ],
-    },
-    {
-      name: 'Priya Sharma',
-      email: 'priya.sharma',
-      skills: [
-        { name: 'CSS', proficiencyLevel: 3, expInMonths: 36 },
-        { name: 'HTML', proficiencyLevel: 3, expInMonths: 24 },
-        { name: 'JavaScript', proficiencyLevel: 2, expInMonths: 18 },
-        { name: 'TypeScript', proficiencyLevel: 2, expInMonths: 15 },
-        { name: 'Vue', proficiencyLevel: 2, expInMonths: 10 },
-      ],
-    },
-    {
-      name: 'Rahul Verma',
-      email: 'rahul.verma',
-      skills: [
-        { name: 'CSS', proficiencyLevel: 2, expInMonths: 24 },
-        { name: 'HTML', proficiencyLevel: 2, expInMonths: 18 },
-        { name: 'JavaScript', proficiencyLevel: 2, expInMonths: 14 },
-        { name: 'React', proficiencyLevel: 2, expInMonths: 12 },
-        { name: 'Vue', proficiencyLevel: 1, expInMonths: 8 },
-      ],
-    },
-    {
-      name: 'Sneha Patel',
-      email: 'sneha.patel',
-      skills: [
-        { name: 'CSS', proficiencyLevel: 4, expInMonths: 40 },
-        { name: 'HTML', proficiencyLevel: 3, expInMonths: 30 },
-        { name: 'TypeScript', proficiencyLevel: 3, expInMonths: 20 },
-        { name: 'React', proficiencyLevel: 2, expInMonths: 16 },
-        { name: 'GraphQL', proficiencyLevel: 1, expInMonths: 8 },
-      ],
-    },
-    {
-      name: 'Kiran Kumar',
-      email: 'kiran.kumar',
-      skills: [
-        { name: 'CSS', proficiencyLevel: 3, expInMonths: 28 },
-        { name: 'HTML', proficiencyLevel: 3, expInMonths: 22 },
-        { name: 'JavaScript', proficiencyLevel: 3, expInMonths: 20 },
-        { name: 'TypeScript', proficiencyLevel: 2, expInMonths: 12 },
-      ],
-    },
-    {
-      name: 'Divya Nair',
-      email: 'divya.nair',
-      skills: [
-        { name: 'CSS', proficiencyLevel: 2, expInMonths: 20 },
-        { name: 'HTML', proficiencyLevel: 2, expInMonths: 16 },
-        { name: 'JavaScript', proficiencyLevel: 2, expInMonths: 12 },
-        { name: 'React', proficiencyLevel: 2, expInMonths: 10 },
-      ],
-    },
-    {
-      name: 'Amit Singh',
-      email: 'amit.singh',
-      skills: [
-        { name: 'CSS', proficiencyLevel: 3, expInMonths: 32 },
-        { name: 'HTML', proficiencyLevel: 3, expInMonths: 26 },
-        { name: 'JavaScript', proficiencyLevel: 2, expInMonths: 18 },
-      ],
-    },
-    {
-      name: 'Pooja Iyer',
-      email: 'pooja.iyer',
-      skills: [
-        { name: 'CSS', proficiencyLevel: 1, expInMonths: 12 },
-        { name: 'HTML', proficiencyLevel: 1, expInMonths: 10 },
-      ],
-    },
-    {
-      name: 'Vijay Reddy',
-      email: 'vijay.reddy',
-      skills: [
-        { name: 'CSS', proficiencyLevel: 2, expInMonths: 18 },
-        { name: 'HTML', proficiencyLevel: 2, expInMonths: 14 },
-        { name: 'JavaScript', proficiencyLevel: 1, expInMonths: 10 },
-        { name: 'WebGL', proficiencyLevel: 1, expInMonths: 6 },
-      ],
-    },
-    {
-      name: 'Lakshmi Das',
-      email: 'lakshmi.das',
-      skills: [
-        { name: 'HTML', proficiencyLevel: 2, expInMonths: 14 },
-        { name: 'JavaScript', proficiencyLevel: 1, expInMonths: 10 },
-      ],
-    },
-  ],
-  metadata: {
-    proficiencyLevels: [
-      { level: 1, label: 'Foundational' },
-      { level: 2, label: 'Developing' },
-      { level: 3, label: 'Professional' },
-      { level: 4, label: 'Expert' },
-      { level: 5, label: 'Master' },
-    ],
-  },
-};
+// const DUMMY_SKILL_REPORT = {
+//   employees: [
+//     {
+//       name: 'Atul Bansal',
+//       email: 'atul.bansal',
+//       skills: [
+//         { name: 'CSS', proficiencyLevel: 4, expInMonths: 48 },
+//         { name: 'HTML', proficiencyLevel: 4, expInMonths: 36 },
+//         { name: 'JavaScript', proficiencyLevel: 3, expInMonths: 24 },
+//         { name: 'React', proficiencyLevel: 3, expInMonths: 18 },
+//         { name: 'GraphQL', proficiencyLevel: 2, expInMonths: 12 },
+//       ],
+//     },
+//     {
+//       name: 'Priya Sharma',
+//       email: 'priya.sharma',
+//       skills: [
+//         { name: 'CSS', proficiencyLevel: 3, expInMonths: 36 },
+//         { name: 'HTML', proficiencyLevel: 3, expInMonths: 24 },
+//         { name: 'JavaScript', proficiencyLevel: 2, expInMonths: 18 },
+//         { name: 'TypeScript', proficiencyLevel: 2, expInMonths: 15 },
+//         { name: 'Vue', proficiencyLevel: 2, expInMonths: 10 },
+//       ],
+//     },
+//     {
+//       name: 'Rahul Verma',
+//       email: 'rahul.verma',
+//       skills: [
+//         { name: 'CSS', proficiencyLevel: 2, expInMonths: 24 },
+//         { name: 'HTML', proficiencyLevel: 2, expInMonths: 18 },
+//         { name: 'JavaScript', proficiencyLevel: 2, expInMonths: 14 },
+//         { name: 'React', proficiencyLevel: 2, expInMonths: 12 },
+//         { name: 'Vue', proficiencyLevel: 1, expInMonths: 8 },
+//       ],
+//     },
+//     {
+//       name: 'Sneha Patel',
+//       email: 'sneha.patel',
+//       skills: [
+//         { name: 'CSS', proficiencyLevel: 4, expInMonths: 40 },
+//         { name: 'HTML', proficiencyLevel: 3, expInMonths: 30 },
+//         { name: 'TypeScript', proficiencyLevel: 3, expInMonths: 20 },
+//         { name: 'React', proficiencyLevel: 2, expInMonths: 16 },
+//         { name: 'GraphQL', proficiencyLevel: 1, expInMonths: 8 },
+//       ],
+//     },
+//     {
+//       name: 'Kiran Kumar',
+//       email: 'kiran.kumar',
+//       skills: [
+//         { name: 'CSS', proficiencyLevel: 3, expInMonths: 28 },
+//         { name: 'HTML', proficiencyLevel: 3, expInMonths: 22 },
+//         { name: 'JavaScript', proficiencyLevel: 3, expInMonths: 20 },
+//         { name: 'TypeScript', proficiencyLevel: 2, expInMonths: 12 },
+//       ],
+//     },
+//     {
+//       name: 'Divya Nair',
+//       email: 'divya.nair',
+//       skills: [
+//         { name: 'CSS', proficiencyLevel: 2, expInMonths: 20 },
+//         { name: 'HTML', proficiencyLevel: 2, expInMonths: 16 },
+//         { name: 'JavaScript', proficiencyLevel: 2, expInMonths: 12 },
+//         { name: 'React', proficiencyLevel: 2, expInMonths: 10 },
+//       ],
+//     },
+//     {
+//       name: 'Amit Singh',
+//       email: 'amit.singh',
+//       skills: [
+//         { name: 'CSS', proficiencyLevel: 3, expInMonths: 32 },
+//         { name: 'HTML', proficiencyLevel: 3, expInMonths: 26 },
+//         { name: 'JavaScript', proficiencyLevel: 2, expInMonths: 18 },
+//       ],
+//     },
+//     {
+//       name: 'Pooja Iyer',
+//       email: 'pooja.iyer',
+//       skills: [
+//         { name: 'CSS', proficiencyLevel: 1, expInMonths: 12 },
+//         { name: 'HTML', proficiencyLevel: 1, expInMonths: 10 },
+//       ],
+//     },
+//     {
+//       name: 'Vijay Reddy',
+//       email: 'vijay.reddy',
+//       skills: [
+//         { name: 'CSS', proficiencyLevel: 2, expInMonths: 18 },
+//         { name: 'HTML', proficiencyLevel: 2, expInMonths: 14 },
+//         { name: 'JavaScript', proficiencyLevel: 1, expInMonths: 10 },
+//         { name: 'WebGL', proficiencyLevel: 1, expInMonths: 6 },
+//       ],
+//     },
+//     {
+//       name: 'Lakshmi Das',
+//       email: 'lakshmi.das',
+//       skills: [
+//         { name: 'HTML', proficiencyLevel: 2, expInMonths: 14 },
+//         { name: 'JavaScript', proficiencyLevel: 1, expInMonths: 10 },
+//       ],
+//     },
+//   ],
+//   metadata: {
+//     proficiencyLevels: [
+//       { level: 1, label: 'Foundational' },
+//       { level: 2, label: 'Developing' },
+//       { level: 3, label: 'Professional' },
+//       { level: 4, label: 'Expert' },
+//       { level: 5, label: 'Master' },
+//     ],
+//   },
+// };
 
-// Dummy P-level distribution keyed by location → tier → level → count.
-// Replace with a fetch from /skill-distribution-mapping.json (da.live sheet).
-const DUMMY_DISTRIBUTION = new Map([
-  ['noida', new Map([
-    ['generic', new Map([['P20', 5], ['P30', 3], ['P40', 2], ['P50', 1]])],
-    ['niche', new Map([['P20', 2], ['P30', 2], ['P40', 1], ['P50', 0]])],
-    ['super-niche', new Map([['P20', 1], ['P30', 1], ['P40', 0], ['P50', 0]])],
-    ['ultra-niche', new Map([['P20', 0], ['P30', 0], ['P40', 0], ['P50', 0]])],
-  ])],
-  ['bangalore', new Map([
-    ['generic', new Map([['P20', 3], ['P30', 2], ['P40', 1], ['P50', 0]])],
-    ['niche', new Map([['P20', 2], ['P30', 1], ['P40', 1], ['P50', 1]])],
-    ['super-niche', new Map([['P20', 1], ['P30', 0], ['P40', 1], ['P50', 0]])],
-    ['ultra-niche', new Map([['P20', 1], ['P30', 0], ['P40', 0], ['P50', 0]])],
-  ])],
-]);
+// const DUMMY_DISTRIBUTION = new Map([
+//   ['noida', new Map([
+//     ['generic', new Map([['P20', 5], ['P30', 3], ['P40', 2], ['P50', 1]])],
+//     ['niche', new Map([['P20', 2], ['P30', 2], ['P40', 1], ['P50', 0]])],
+//     ['super-niche', new Map([['P20', 1], ['P30', 1], ['P40', 0], ['P50', 0]])],
+//     ['ultra-niche', new Map([['P20', 0], ['P30', 0], ['P40', 0], ['P50', 0]])],
+//   ])],
+//   ['bangalore', new Map([
+//     ['generic', new Map([['P20', 3], ['P30', 2], ['P40', 1], ['P50', 0]])],
+//     ['niche', new Map([['P20', 2], ['P30', 1], ['P40', 1], ['P50', 1]])],
+//     ['super-niche', new Map([['P20', 1], ['P30', 0], ['P40', 1], ['P50', 0]])],
+//     ['ultra-niche', new Map([['P20', 1], ['P30', 0], ['P40', 0], ['P50', 0]])],
+//   ])],
+// ]);
+
+/**
+ * Builds a location → tier → P-level → employee count distribution from the
+ * skill report joined with the employee mapping. Each employee is counted once
+ * per tier they have at least one skill in, under their job level and location.
+ * @param {Array} employees direct-reports with submitted skills
+ * @param {Map} skillRarity from computeSkillRarity()
+ * @param {Array} employeeRecords from getAllEmployeeRecords() (includes jobLevel/location)
+ * @returns {Map<string, Map<string, Map<string, number>>>}
+ */
+function computeDistribution(employees, skillRarity, employeeRecords) {
+  const empInfo = new Map(
+    employeeRecords
+      .filter((rec) => rec.jobLevel && rec.location)
+      .map((rec) => [rec.ldap, { jobLevel: rec.jobLevel, location: rec.location.toLowerCase() }]),
+  );
+
+  const distribution = new Map();
+  employees.forEach((emp) => {
+    const info = empInfo.get(normalizeLdap(emp.email || emp.employeeId));
+    if (!info) return;
+    const { jobLevel, location } = info;
+    if (!distribution.has(location)) distribution.set(location, new Map());
+    const locData = distribution.get(location);
+    groupSkillsByTier(emp.skills, skillRarity).forEach((skills, tierId) => {
+      if (!skills.length) return;
+      if (!locData.has(tierId)) locData.set(tierId, new Map());
+      const tierData = locData.get(tierId);
+      tierData.set(jobLevel, (tierData.get(jobLevel) || 0) + 1);
+    });
+  });
+  return distribution;
+}
 
 /**
  * Renders the "Skill Distribution" table with a location filter toggle.
  * Rows are rarity tiers, columns are P-level bands. Locations and levels are
  * authorable via "locations" and "levels" config rows in the da.live block.
- * Currently uses dummy data — swap DUMMY_DISTRIBUTION for a real fetch when
- * the manager provides the dataset.
+ * Distribution is computed from the employee mapping (Job Level + Location)
+ * joined with the skill report via computeDistribution().
  */
-function renderDistributionTable(body, config) {
+function renderDistributionTable(body, config, distribution) {
   const levels = (config.levels || 'P20,P30,P40,P50').split(',').map((s) => s.trim());
   const locationNames = (config.locations || 'Noida,Bangalore').split(',').map((s) => s.trim());
 
@@ -418,6 +472,7 @@ function renderDistributionTable(body, config) {
     tr.append(createElement('td', 'report-table__cell-employee', tier.label));
     levels.forEach((level) => {
       const td = createElement('td', 'report-table__cell-count');
+      td.dataset.label = level;
       countCells.set(`${tier.id}-${level}`, td);
       tr.append(td);
     });
@@ -428,7 +483,7 @@ function renderDistributionTable(body, config) {
 
   // Populate cells for the given location label
   function updateLocation(loc) {
-    const locData = DUMMY_DISTRIBUTION.get(loc.toLowerCase());
+    const locData = distribution.get(loc.toLowerCase());
     RARITY_TIERS.forEach((tier) => {
       levels.forEach((level) => {
         const td = countCells.get(`${tier.id}-${level}`);
@@ -454,7 +509,7 @@ function renderDistributionTable(body, config) {
   body.append(filterBar, tableWrapper);
 }
 
-function renderTable(block, config, data, skillRarity) {
+function renderTable(block, config, data, skillRarity, distribution) {
   const { employees, metadata: { proficiencyLevels } } = data;
 
   block.textContent = '';
@@ -486,7 +541,7 @@ function renderTable(block, config, data, skillRarity) {
   toolbar.append(exportBtn);
   body.append(toolbar);
   renderTierTable(body, employees, proficiencyLevels, skillRarity);
-  renderDistributionTable(body, config);
+  renderDistributionTable(body, config, distribution);
 
   wrapper.append(body);
   block.append(wrapper);
@@ -525,14 +580,10 @@ export default async function decorate(block) {
   }
 
   try {
-    const data = isTestEnvironment() ? DUMMY_SKILL_REPORT : await getSkillReport();
+    const data = await getSkillReport();
     // Rarity is computed across the whole workforce before filtering to the team.
     const skillRarity = computeSkillRarity(data.employees);
-    // In test environments the dummy employees won't match any real direct-report
-    // LDAP, so skip the filter and show all dummy data as-is.
-    const employees = isTestEnvironment()
-      ? data.employees
-      : await filterToDirectReports(data.employees, user);
+    const employees = await filterToDirectReports(data.employees, user);
 
     if (employees.length === 0) {
       block.textContent = '';
@@ -540,7 +591,13 @@ export default async function decorate(block) {
       return;
     }
 
-    renderTable(block, config, { ...data, employees }, skillRarity);
+    const distribution = computeDistribution(
+      employees,
+      skillRarity,
+      await getAllEmployeeRecords(),
+    );
+
+    renderTable(block, config, { ...data, employees }, skillRarity, distribution);
   } catch {
     block.textContent = '';
     block.append(createElement('p', 'report-table__error', 'Failed to load skill report. Please try again.'));

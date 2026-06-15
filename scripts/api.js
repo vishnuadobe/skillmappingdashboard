@@ -74,9 +74,12 @@ export function buildSkillsPayload(employeeId, email, name, skillEntries) {
         expInMonths: entry.expInMonths,
         proficiencyLevel: entry.proficiencyLevel,
       };
-      // Backend stores specialization as a single comma-separated string.
+      // Backend stores specialization and platform as comma-separated strings.
       if (Array.isArray(entry.specializations) && entry.specializations.length) {
         skill.specialization = entry.specializations.join(', ');
+      }
+      if (Array.isArray(entry.platforms) && entry.platforms.length) {
+        skill.platform = entry.platforms.join(', ');
       }
       if (entry.certification) {
         skill.certification = { certificateName: entry.certification.name };
@@ -102,5 +105,13 @@ export async function submitSkillReport(payload) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteSkill(employeeId, skillName) {
+  return requestJson(SKILL_REPORT_URL, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ employeeId, skillName }),
   });
 }

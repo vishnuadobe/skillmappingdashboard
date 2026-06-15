@@ -15,16 +15,17 @@
 ### `entry-form` — `/` (index)
 **Status: Complete (live POST + saved view)**
 
-- Table-based UI: columns — Skill, Experience in Months, Specialization, Certification, Title of Certificate
+- Table-based UI: columns — Skill, Experience in Months, Specialization, Platform, Certification, Title of Certificate
 - Skill dropdown fetched dynamically from `/skills.json` (da.live authorable)
   - "Other…" option reveals free-text input for custom skills not in the list
 - Experience: free-text number input (1–1000 months); mandatory field
 - Specialization: custom multi-select dropdown, options fetched from `/specializations.json` (da.live `specializations` sheet, authorable); optional field — multiple values can be selected; selected values shown as indigo chips in data rows
+- **Platform**: custom multi-select dropdown, options fetched from `/platforms.json` (da.live `platforms` sheet, authorable); optional field — lists Adobe platforms (EDS, AEM, AJO, AEP, etc.); selected values shown as chips; stored as comma-separated string in backend field `platform`, split back to array on read
 - Certification: simple Yes / No dropdown; Title of Certificate text input shown only when Yes
 - **"+ Add" submits immediately** — there is no separate Submit button (removed). Clicking **+ Add** in the bottom input row validates, builds a single-skill payload, POSTs it via `submitSkillReport()`, then silently reloads the "Previously submitted skills" list and shows a green success banner (`"<skill>" added successfully.`). The backend merges/appends, so a single-skill POST covers it
 - **Single-page flow** — the bottom "+ Add" input row is always present; after each Add it clears (`state.input` reset) and is ready for the next skill
 - Proficiency level derived from experience months via `/skill-levels.json` (authorable)
-- Specialization round-trips correctly: the backend field is `specialization` (singular, **comma-separated string**, e.g. `"PNA, SPA"`), not a `specializations` array. `buildSkillsPayload()` joins the array on write; `parseSpecializations()` splits it back on read
+- Specialization and Platform round-trip correctly: backend fields are `specialization` and `platform` (singular, **comma-separated strings**, e.g. `"PNA, SPA"` / `"EDS, AEM"`). `buildSkillsPayload()` joins each array on write; `parseSpecializations()` is reused to split both back on read
 - **Previously submitted skills** — a list rendered below the form. Loaded on init via `loadPreviousEntries()` into `state.savedRows`; specializations show as chips. Refreshed silently after each Add so it always reflects current server state
   - **Inline edit (✏) on saved rows, immediate-save** — clicking ✏ on a previously-submitted skill (`editSavedRow`) swaps that row for a pre-filled input row in place, with **floppy (Save) / × (Cancel) icon buttons** on a single line (`entry-form__icon-btn--save` / `--cancel`). Save (`submitInputSkill`) validates, builds a single-skill payload, POSTs it immediately, then silently reloads the saved list and shows a success banner
   - **Two independent input models** — the saved-row edit binds to `state.editInput`, separate from the add row's `state.input`. The "+ Add" row stays present and usable while a saved row is being edited, so both input rows can be active at once. `submitInputSkill(input, { isEdit })` is parameterized by which model it submits and resets only that one
@@ -35,9 +36,9 @@
 ### `report-table` — `/employee-details`
 **Status: Complete (live API, manager-gated) — two tables**
 
-- Fetches real skill data via `getSkillReport()` in production; in test/local environments (`isTestEnvironment()`) it uses a built-in `DUMMY_SKILL_REPORT` (10 employees engineered to populate all four rarity tiers) so the view is always populated
+- Fetches real skill data via `getSkillReport()` in all environments (dummy data commented out)
 - **Access gate** — resolves the session user, then `allowed = user ? user.isManager : isTestEnvironment()`. A non-manager (or, in production, an unidentified user) is redirected to `/` before any data is fetched
-- **Direct-reports filter** — employees filtered to those whose `Manager LDAP` equals the logged-in manager's LDAP (one level only), joined on the normalized LDAP local-part. Skipped entirely in test environments (the dummy employees won't match any real direct-report LDAP, so the full dummy list is shown)
+- **Direct-reports filter** — employees filtered to those whose `Manager LDAP` equals the logged-in manager's LDAP (one level only), joined on the normalized LDAP local-part
 - **Skill rarity tiers** (Generic / Niche / Super niche / Ultra niche) — computed from how many employees across the **whole workforce** hold each skill (`computeSkillRarity` + `getRarityTier`). Thresholds in the `RARITY_TIERS` constant: Generic ≥50%, Niche ≥30%, Super niche ≥20%, Ultra niche ≥10%
 - **Shared tier-grouping helpers** (single source of truth, used by the tier table render, the CSV export, and the distribution table's tier rows):
   - `getSkillTier(name, skillRarity)` — the tier a skill falls into (or `undefined` if below the lowest threshold)
@@ -57,9 +58,9 @@
 
 #### Table 2 — "Skill Distribution" (`renderDistributionTable`)
 - Rows = rarity tiers (Generic → Ultra niche); columns = **P-level bands** (P20/P30/P40/P50), cells = employee counts. Two-row `thead`: "By" + "Skill Distribution" (`colspan`) banner, then "Role" + one `th` per level
-- **Location filter** — pill buttons (Noida / Bangalore) above the table; clicking one swaps all cell values in-place (no DOM rebuild). The same tier rows are shown per location (the requirement was to show Generic/Niche/etc twice, once per location)
+- **Location filter** — pill buttons (Noida / Bangalore) above the table; clicking one swaps all cell values in-place (no DOM rebuild)
 - **Authorable** via two optional block config rows in the da.live `employee-details` document: `levels` (comma list, default `P20,P30,P40,P50`) and `locations` (comma list, default `Noida,Bangalore`)
-- Currently backed by a `DUMMY_DISTRIBUTION` map keyed `location → tier → level → count`. **To be replaced** with a fetch from `/skill-distribution-mapping.json` (da.live sheet) once the manager provides the data — the dataset will carry each employee's P-level + location
+- **Live data** — distribution is now computed at runtime via `computeDistribution(employees, skillRarity, employeeRecords)`: joins each direct-report's LDAP with `getAllEmployeeRecords()` (from `employee-mapping.js`) to get their `jobLevel` (raw sheet value prefixed with "P", e.g. `"30"` → `"P30"`) and `location`. Each employee is counted once per rarity tier they have ≥1 skill in. Dummy data (`DUMMY_SKILL_REPORT`, `DUMMY_DISTRIBUTION`) commented out
 
 ---
 
@@ -70,7 +71,7 @@
 - `getSkillReport()` — GET all employees from `SKILL_REPORT_URL`
 - `getEmployeeSkillReport(employeeId)` — GET `skillReport/employee/{employeeId}`; used by entry-form saved view + previous-entries list
 - `submitSkillReport(payload)` — POST to `SKILL_REPORT_URL`
-- `buildSkillsPayload(employeeId, email, name, skills)` — constructs POST body matching confirmed schema; `specialization` joined to a comma-separated string when present; cert `certificateImageUrl` only included when present
+- `buildSkillsPayload(employeeId, email, name, skills)` — constructs POST body matching confirmed schema; `specialization` and `platform` joined to comma-separated strings when present; cert `certificateImageUrl` only included when present
 - `getLevelFromExperienceMonths(months)` — async, fetches thresholds from `/skill-levels.json`, caches result
 - `requestJson()` attaches a `Bearer` token from `window.adobeIMS.getAccessToken()` when available
 
@@ -80,7 +81,9 @@
 - `getEmployeeMapping(ldap)` — a person's record (name, manager, manager LDAP)
 - `isManager(ldap)` — true iff the LDAP appears as a `Manager LDAP` for ≥1 employee
 - `getDirectReports(ldap)` — rows where `Manager LDAP === ldap` (one level)
+- `getAllEmployeeRecords()` — returns all rows including `jobLevel` (P-prefixed) and `location`; used by `report-table` to build the Skill Distribution
 - `buildUserFromMapping(ldap)` — builds an IndexDB-shaped user from the sheet (used by `?as=` impersonation)
+- Mapping rows now include `jobLevel` (`"30"` → `"P30"`) and `location` (`"Bangalore"`) alongside the existing manager-hierarchy fields
 
 ### `scripts/auth.js`
 - Adobe IMS SSO is **wired**: `loadIms()` loads `imslib.min.js`, `window.adobeid` config, `onReady` → fetches profile → `setUser({ name, email, ldap, isManager })`
@@ -149,13 +152,24 @@ Separate `specializations` da.live spreadsheet. Controls the multi-select specia
 | Android Native App |
 | AppBuils |
 
+### `/specializations/platforms.json`
+A second **tab** named `platforms` inside the existing `specializations` da.live spreadsheet (same `name` column structure). Served at `/specializations/platforms.json`. Controls the multi-select Platform dropdown in `entry-form`. Authors add or remove Adobe platforms without any code change. Values are stored as a `platform` comma-separated string in the backend and split back to an array on read.
+
+| name |
+|---|
+| EDS |
+| AEM |
+| AJO |
+| AEP |
+| … |
+
 ### `/employee-mapping.json`
 `employee-mapping` da.live spreadsheet — the manager hierarchy. Read by `scripts/employee-mapping.js` to derive `isManager` and the direct-reports filter. ~86 rows.
 
-| Emp_LDAP | Resource Name | Workday Manager | Manager LDAP |
-|---|---|---|---|
-| robinvarshn@adobe.com | robin varshney . | Bansal, Atul | atulb@adobe.com |
-| … | … | … | … |
+| Emp_LDAP | Resource Name | Workday Manager | Manager LDAP | Job Level | Location | Location Code |
+|---|---|---|---|---|---|---|
+| robinvarshn@adobe.com | robin varshney . | Bansal, Atul | atulb@adobe.com | 30 | Bangalore | BLR |
+| … | … | … | … | … | … | … |
 
 > Filtering joins the sheet's `Emp_LDAP`/`Manager LDAP` with the skill API's `employeeId`/`email` on the normalized LDAP local-part — they must spell the LDAP identically. Known test rows (`nehalv`, `vdivyeshan`, `kmomin`) were added under `atulb` for testing. Note: the sheet's `chethankuma` vs the backend's `chethankumar` won't join until one side is corrected.
 
@@ -268,4 +282,4 @@ Separate `specializations` da.live spreadsheet. Controls the multi-select specia
 | Auth headers on API calls | `requestJson()` sends a bearer token when `window.adobeIMS` is present; confirm backend requirement |
 | Data reconciliation | LDAP spellings must match between the mapping sheet and the skill backend (e.g. `chethankuma` vs `chethankumar`) or the employee won't surface |
 | Server-side skill deletion | Backend merges only; need a `DELETE skillReport/employee/{employeeId}/skill/{skillName}` endpoint (or replace semantics on POST) |
-| Real Skill Distribution data | `report-table` Table 2 is backed by `DUMMY_DISTRIBUTION` (location → tier → P-level → count). Awaiting the manager's per-employee P-level + location dataset, to be authored as `/skill-distribution-mapping.json` and fetched in place of the dummy map |
+| ~~Real Skill Distribution data~~ | **Done** — distribution is computed at runtime from `employee-mapping.json` (`Job Level` + `Location`) joined with the live skill report. No separate sheet needed |
