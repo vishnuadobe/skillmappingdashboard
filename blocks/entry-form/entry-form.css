@@ -121,14 +121,6 @@
 }
 
 /* Proportional column widths — fixed layout, no horizontal overflow */
-.entry-form .entry-form__skills-table thead th:nth-child(1) { width: 20%; }
-.entry-form .entry-form__skills-table thead th:nth-child(2) { width: 12%; }
-.entry-form .entry-form__skills-table thead th:nth-child(3) { width: 16%; }
-.entry-form .entry-form__skills-table thead th:nth-child(4) { width: 16%; }
-.entry-form .entry-form__skills-table thead th:nth-child(5) { width: 12%; }
-.entry-form .entry-form__skills-table thead th:nth-child(6) { width: 15%; }
-.entry-form .entry-form__skills-table thead th:nth-child(7) { width: 9%; }
-
 .entry-form .entry-form__skills-table thead tr {
   background: var(--entry-form-surface-alt);
   border-bottom: 1.5px solid var(--entry-form-border);
@@ -145,6 +137,15 @@
   white-space: normal;
   line-height: 1.3;
 }
+
+/* Proportional column widths â€” fixed layout, no horizontal overflow */
+.entry-form .entry-form__skills-table thead th:nth-child(1) { width: 20%; }
+.entry-form .entry-form__skills-table thead th:nth-child(2) { width: 12%; }
+.entry-form .entry-form__skills-table thead th:nth-child(3) { width: 16%; }
+.entry-form .entry-form__skills-table thead th:nth-child(4) { width: 16%; }
+.entry-form .entry-form__skills-table thead th:nth-child(5) { width: 12%; }
+.entry-form .entry-form__skills-table thead th:nth-child(6) { width: 15%; }
+.entry-form .entry-form__skills-table thead th:nth-child(7) { width: 9%; }
 
 .entry-form .entry-form__skills-table thead th:last-child {
   width: 80px;
